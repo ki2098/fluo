@@ -1,0 +1,21 @@
+{
+    "domain":[200,100,40],
+    "boundary":[
+        {
+            "label":"cube",
+            "type":"obstacle",
+            "origin":[80,40,0],
+            "size":[20,20,20]
+        },
+        {
+            "label":"periodic1",
+            "type":"periodic",
+            "direction":"x"
+        },
+        {
+            "label":"periodic2",
+            "type":"periodic",
+            "direction":"y"
+        }
+    ]
+}
