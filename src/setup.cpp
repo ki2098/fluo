@@ -2,8 +2,8 @@
 #include "setup.h"
 #include "alloc.h"
 #include "basic.h"
-
-
+#include "flag.h"
+#include "util.h"
 
 Setup::Setup(char* fname) {
     this->doc = yyjson_read_file(fname, 0, NULL, NULL);
@@ -20,20 +20,20 @@ Setup::~Setup() {
 }
 
 unsigned int* Setup::setup_flag(void) {
-    int nn[3] = {
+    int size[3] = {
         this->N[0] + 2 * GUIDE,
         this->N[1] + 2 * GUIDE,
         this->N[2] + 2 * GUIDE,
     };
 
-    unsigned int* F = Alloc::uint_3d(nn);
+    unsigned int* F = Alloc::uint_3d(size);
 
     printf("F allocated\n");
 
     for (int i = GUIDE; i < this->N[0] + GUIDE; i ++) {
         for (int j = GUIDE; j < this->N[1] + GUIDE; j ++) {
             for (int k = GUIDE; k < this->N[2] + GUIDE; k ++) {
-                F[idx3d(i,j,k,nn)] = 1;
+                F[idx3d(i,j,k,size)] = Util::ibset(F[idx3d(i,j,k,size)], Flag::Active, Util::Mask1, 1);
             }
         }
     }
@@ -60,7 +60,7 @@ unsigned int* Setup::setup_flag(void) {
             for (int i = origin[0]; i < origin[0] + size[0]; i ++) {
                 for (int j = origin[1]; j < origin[1] + size[1]; j ++) {
                     for (int k = origin[2]; k < origin[2] + size[2]; k ++) {
-                        F[idx3d(i,j,k,nn)] = 0;
+                        F[idx3d(i,j,k,size)] = Util::ibset(F[idx3d(i,j,k,size)], Flag::Active, Util::Mask1, 0);
                     }
                 }
             }
