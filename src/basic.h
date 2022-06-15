@@ -1,6 +1,0 @@
-#ifndef _BASIC_H
-#define _BASIC_H 1
-
-static const int GUIDE = 2;
-
-#endif
