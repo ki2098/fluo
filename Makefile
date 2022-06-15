@@ -1,18 +1,23 @@
-.alloc:
-	g++ -g -c src/alloc.cpp -o obj/alloc.o
+.yyjson:
+	g++ -c ./lib/yyjson.c -o ./lib/yyjson.o
 
-.setup:
-	g++ -g -c src/setup.cpp -o obj/setup.o
+.jreader:
+	g++ -c ./src/jreader.cpp -o ./obj/jreader.o
+
+.alloc:
+	g++ -c ./src/alloc.cpp -o ./obj/alloc.o
+
+.boundary:
+	g++ -c ./src/boundary.cpp -o ./obj/boundary.o
+
+.domain:
+	g++ -c ./src/domain.cpp -o ./obj/domain.o
+
+.util:
+	g++ -c ./src/util.cpp -o ./obj/util.o
 
 .main:
-	g++ -g -c src/main.cpp -o obj/main.o
+	g++ -c ./src/main.cpp -o ./obj/main.o
 
-.yyjson:
-	g++ -g -c lib/yyjson.c -o obj/yyjson.o
-
-all: .alloc .setup .main .yyjson
-	g++ -g obj/main.o obj/alloc.o obj/setup.o obj/yyjson.o -o bin/fluo++.exe
-
-clean:
-	rm bin/*
-	rm obj/*
+all: .yyjson .jreader .alloc .boundary .domain .util .main
+	g++ obj/util.o obj/jreader.o obj/main.o obj/b.o ./obj/domain.o ./obj/alloc.o lib/yyjson.o -o bin/fluo++

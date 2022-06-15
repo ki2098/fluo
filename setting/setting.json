@@ -1,0 +1,29 @@
+{
+    "domain":[200, 10, 200],
+    "boundary":[
+        {
+            "label":"moving_wall",
+            "U":{"type":"fixedValue", "value":[1.0, 0.0, 0.0]},
+            "P":{"type":"fixedGradient", "value":0.0},
+            "topo":{"io":"outer", "face":["z+"]}
+        },
+        {
+            "label":"fixed_wall",
+            "U":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
+            "P":{"type":"fixedGradient", "value":0.0},
+            "topo":{"io":"outer", "face":["x+","z-","x-"]}
+        },
+        {
+            "label":"front_back",
+            "U":{"type":"symmetric"},
+            "P":{"type":"directional", "U":1.0, "direction":"y+"},
+            "topo":{"io":"outer", "face":["y+", "y-"]}
+        },
+        {
+            "label":"square",
+            "U":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
+            "P":{"type":"fixedGradient", "value":0.0},
+            "topo":{"io":"inner", "shape":"cuboid", "position":[[40, 0, 40], [59, 9, 59]]}
+        }
+    ]
+}
