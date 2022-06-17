@@ -4,7 +4,7 @@
 #include "alloc.h"
 #include "flag.h"
 
-void load_bcfi(BC* bc, unsigned int flag, yyjson_val* topo) {
+void load_bcfi(BC *bc, unsigned int flag, yyjson_val *topo) {
     yyjson_val *io = yyjson_obj_get(topo, "io");
     if (yyjson_equals_str(io, "outer")) {
         yyjson_val *faces = yyjson_obj_get(topo, "face");
@@ -29,7 +29,21 @@ void load_bcfi(BC* bc, unsigned int flag, yyjson_val* topo) {
     }
 }
 
-JReader::JReader(char* fname) {
+int search_boundary(yyjson_val *boundary, const char *label) {
+    yyjson_arr_iter iter;
+    yyjson_arr_iter_init(boundary, &iter);
+    int index = 1;
+    yyjson_val *bound;
+    while (bound = yyjson_arr_iter_next(&iter)) {
+        if (yyjson_equals_str(yyjson_obj_get(bound, "label"), label)) {
+            return index;
+        }
+        index ++;
+    }
+    return 0;
+}
+
+JReader::JReader(char *fname) {
     this->doc = yyjson_read_file(fname, 0, NULL, NULL);
     this->root = yyjson_doc_get_root(this->doc);
 }
@@ -38,7 +52,7 @@ JReader::~JReader() {
     yyjson_doc_free(this->doc);
 }
 
-void JReader::setup_bc(BC* bc, Driver* driver) {
+void JReader::load_bc(BC* bc, Driver* driver) {
     yyjson_val *boundary = yyjson_obj_get(this->root, "boundary");
     bc->n = yyjson_arr_size(boundary);
     bc->b = new BD[bc->n + 1];
@@ -60,7 +74,7 @@ void JReader::setup_bc(BC* bc, Driver* driver) {
                 load_bcfi(bc, BC::OBC::US, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "periodic")) {
                 load_bcfi(bc, BC::OBC::UP, yyjson_obj_get(bound, "topo"));
-            } else if (yyjson_equals_str(type, "outlofw")) {
+            } else if (yyjson_equals_str(type, "outflow")) {
                 load_bcfi(bc, BC::OBC::UO, yyjson_obj_get(bound, "topo"));
             }
             value = yyjson_obj_get(var, "value");
@@ -138,13 +152,29 @@ void JReader::setup_bc(BC* bc, Driver* driver) {
     }
 }
 
-void JReader::setup_domain(D *dom) {
+void JReader::load_domain(D *dom, LS *ls) {
     yyjson_val *domain = yyjson_obj_get(this->root, "domain");
     dom->size[0] = yyjson_get_int(yyjson_arr_get(domain, 0)) + 2 * D::GUIDE;
     dom->size[1] = yyjson_get_int(yyjson_arr_get(domain, 1)) + 2 * D::GUIDE;
     dom->size[2] = yyjson_get_int(yyjson_arr_get(domain, 2)) + 2 * D::GUIDE;
-    dom->F = Alloc::uint_3d(dom->size);
-    int *size = dom->size;
+    int size[4] = {dom->size[0], dom->size[1], dom->size[2], 3};
+
+    dom->F   = Alloc::uint_3d(size);
+    dom->U   = Alloc::double_4d(size);
+    dom->UU  = Alloc::double_4d(size);
+    dom->UC  = Alloc::double_4d(size);
+    dom->UA  = Alloc::double_4d(size);
+    dom->UUA = Alloc::double_4d(size);
+    dom->UR  = Alloc::double_4d(size);
+    dom->P   = Alloc::double_3d(size);
+    dom->PD  = Alloc::double_3d(size);
+    dom->PR  = Alloc::double_3d(size);
+    dom->SGS = Alloc::double_3d(size);
+    dom->X   = Alloc::double_4d(size);
+    dom->KX  = Alloc::double_4d(size);
+    dom->G   = Alloc::double_4d(size);
+    dom->J   = Alloc::double_3d(size);
+    
     unsigned int *F = dom->F;
 
     for (int i = D::GUIDE; i < size[0] - D::GUIDE; i ++) {
@@ -165,10 +195,10 @@ void JReader::setup_domain(D *dom) {
         yyjson_val *io = yyjson_obj_get(topo, "io");
         if (yyjson_equals_str(io, "outer")) {
             yyjson_val *faces = yyjson_obj_get(topo, "face");
-            yyjson_arr_iter iter;
-            yyjson_arr_iter_init(faces, &iter);
+            yyjson_arr_iter fiter;
+            yyjson_arr_iter_init(faces, &fiter);
             yyjson_val *face;
-            while (face = yyjson_arr_iter_next(&iter)) {
+            while (face = yyjson_arr_iter_next(&fiter)) {
                 if (yyjson_equals_str(face, "x+")) {
                     for (int j = D::GUIDE; j < size[1] - D::GUIDE; j ++) {
                         for (int k = D::GUIDE; k < size[2] - D::GUIDE; k ++) {
@@ -249,55 +279,195 @@ void JReader::setup_domain(D *dom) {
                         }
                     }
                 }
-                if (yyjson_obj_get(bound, "U") || yyjson_obj_get(bound, "P")) {
-                    for (int j = p1[1]  + D::GUIDE; j <= p2[1] + D::GUIDE; j ++) {
-                        for (int k = p1[2] + D::GUIDE; k <= p2[2] + D::GUIDE; k ++) {
-                            int i = p1[0] - 1 + D::GUIDE;
-                            unsigned int flag = F[id3(i,j,k,size)];
+                yyjson_val *faces = yyjson_obj_get(bound, "face");
+                yyjson_val *f0, *f1, *f2, *f3, *f4, *f5;
+                int i0, i1, i2, i3, i4, i5;
+                f0 = yyjson_obj_get(faces, "x-");
+                f1 = yyjson_obj_get(faces, "x+");
+                f2 = yyjson_obj_get(faces, "y-");
+                f3 = yyjson_obj_get(faces, "y+");
+                f4 = yyjson_obj_get(faces, "z-");
+                f5 = yyjson_obj_get(faces, "z+");
+                i0 = search_boundary(boundary, yyjson_get_str(f0));
+                i1 = search_boundary(boundary, yyjson_get_str(f1));
+                i2 = search_boundary(boundary, yyjson_get_str(f2));
+                i3 = search_boundary(boundary, yyjson_get_str(f3));
+                i4 = search_boundary(boundary, yyjson_get_str(f4));
+                i5 = search_boundary(boundary, yyjson_get_str(f5));
+                for (int j = p1[1]  + D::GUIDE; j <= p2[1] + D::GUIDE; j ++) {
+                    for (int k = p1[2] + D::GUIDE; k <= p2[2] + D::GUIDE; k ++) {
+                        int i = p1[0] - 1 + D::GUIDE;
+                        unsigned int flag = F[id3(i,j,k,size)];
+                        if (f0) {
+                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, i0);
+                        } else {
                             flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
-                            F[id3(i,j,k,size)] = flag;
+                        }
+                        flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
+                        F[id3(i,j,k,size)] = flag;
 
-                            i = p2[0] + D::GUIDE;
-                            flag = F[id3(i,j,k,size)];
+                        i = p2[0] + D::GUIDE;
+                        flag = F[id3(i,j,k,size)];
+                        if (f1) {
+                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, i1);
+                        } else {
                             flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
-                            F[id3(i,j,k,size)] = flag;
                         }
+                        flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
+                        F[id3(i,j,k,size)] = flag;
                     }
-                    for (int i = p1[0] + D::GUIDE; i <= p2[0] + D::GUIDE; i ++) {
-                        for (int k = p1[2] + D::GUIDE; k <= p2[2] + D::GUIDE; k ++) {
-                            int j = p1[1] - 1 + D::GUIDE;
-                            unsigned int flag = F[id3(i,j,k,size)];
+                }
+                for (int i = p1[0] + D::GUIDE; i <= p2[0] + D::GUIDE; i ++) {
+                    for (int k = p1[2] + D::GUIDE; k <= p2[2] + D::GUIDE; k ++) {
+                        int j = p1[1] - 1 + D::GUIDE;
+                        unsigned int flag = F[id3(i,j,k,size)];
+                        if (f2) {
+                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, i2);
+                        } else {
                             flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
-                            F[id3(i,j,k,size)] = flag;
-
-                            j = p2[1] + D::GUIDE;
-                            flag = F[id3(i,j,k,size)];
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
-                            F[id3(i,j,k,size)] = flag;
                         }
+                        flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
+                        F[id3(i,j,k,size)] = flag;
+
+                        j = p2[1] + D::GUIDE;
+                        flag = F[id3(i,j,k,size)];
+                        if (f3) {
+                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, i3);
+                        } else {
+                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
+                        }
+                        flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
+                        F[id3(i,j,k,size)] = flag;
                     }
-                    for (int i = p1[0] + D::GUIDE; i <= p2[0] + D::GUIDE; i ++) {
-                        for (int j = p1[1] + D::GUIDE; j <= p2[1] + D::GUIDE; j ++) {
-                            int k = p1[2] - 1 + D::GUIDE;
-                            unsigned int flag = F[id3(i,j,k,size)];
+                }
+                for (int i = p1[0] + D::GUIDE; i <= p2[0] + D::GUIDE; i ++) {
+                    for (int j = p1[1] + D::GUIDE; j <= p2[1] + D::GUIDE; j ++) {
+                        int k = p1[2] - 1 + D::GUIDE;
+                        unsigned int flag = F[id3(i,j,k,size)];
+                        if (f4) {
+                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, i4);
+                        } else {
                             flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
-                            F[id3(i,j,k,size)] = flag;
-
-                            k = p2[2] + D::GUIDE;
-                            flag = F[id3(i,j,k,size)];
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
-                            F[id3(i,j,k,size)] = flag;
                         }
+                        flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
+                        F[id3(i,j,k,size)] = flag;
+
+                        k = p2[2] + D::GUIDE;
+                        flag = F[id3(i,j,k,size)];
+                        if (f5) {
+                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, i5);
+                        } else {
+                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
+                        }
+                        flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
+                        F[id3(i,j,k,size)] = flag;
                     }
                 }
             }
         }
         index ++;
+    }
+    
+    yyjson_val *init = yyjson_obj_get(this->root, "init");
+    double u_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "U"), 0));
+    double v_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "U"), 1));
+    double w_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "U"), 2));
+    double p_init = yyjson_get_real(yyjson_obj_get(init, "P"));
+    for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+            for (int k = 0; k < size[2]; k ++) {
+                if (Util::ibsee(F[id3(i,j,k,size)], Flag::Active, Util::Mask1)) {
+                    dom->U[id4(i,j,k,0,size)] = u_init;
+                    dom->U[id4(i,j,k,1,size)] = v_init;
+                    dom->U[id4(i,j,k,2,size)] = w_init;
+                    dom->P[id3(i,j,k,size)]   = p_init;
+                }
+            }
+        }
+    }
+
+    yyjson_val *parameter = yyjson_obj_get(this->root, "parameter");
+    dom->re = (double)yyjson_get_int(yyjson_obj_get(parameter, "Re"));
+    dom->ri = 1.0 / dom->re;
+    dom->dt = yyjson_get_real(yyjson_obj_get(parameter, "dt"));
+    dom->ntime = yyjson_get_real(yyjson_obj_get(parameter, "timestep"));
+    dom->tdiv = yyjson_get_real(yyjson_obj_get(parameter, "TDiv"));
+
+    yyjson_val *monitor = yyjson_obj_get(this->root, "monitor");
+    if (monitor) {
+        dom->monitor = 1U;
+        if (yyjson_equals_str(yyjson_obj_get(monitor, "type"), "time")) {
+            double interval = yyjson_get_real(yyjson_obj_get(monitor, "interval"));
+            dom->monitor_interval = int(interval / dom->dt);
+        } else if (yyjson_equals_str(yyjson_obj_get(monitor, "type"), "timestep")) {
+            dom->monitor_interval = yyjson_get_int(yyjson_obj_get(monitor, "interval"));
+        }
+    }
+
+    yyjson_val *poisson = yyjson_obj_get(this->root, "poisson");
+    if (yyjson_equals_str(yyjson_obj_get(poisson, "solver"), "jacobi")) {
+        ls->type = LS::Type::jacobi;
+    } else if (yyjson_equals_str(yyjson_obj_get(poisson, "solver"), "sor")) {
+        ls->type = LS::Type::sor;
+    } else if (yyjson_equals_str(yyjson_obj_get(poisson, "solver"), "bicgstab")) {
+        ls->type = LS::Type::bicgstab;
+    } else if (yyjson_equals_str(yyjson_obj_get(poisson, "solver"), "pbicgstab")) {
+        ls->type = LS::Type::pbicgstab;
+    }
+    ls->omega = yyjson_get_real(yyjson_obj_get(poisson, "omega"));
+}
+
+void JReader::load_mesh(D *dom) {
+    yyjson_doc *mesh_doc = yyjson_read_file("./setting/mesh.json", 0, NULL, NULL);
+    yyjson_val *mesh_root = yyjson_doc_get_root(mesh_doc);
+    yyjson_val *points = yyjson_obj_get(mesh_root, "point");
+    yyjson_arr_iter iter;
+    yyjson_arr_iter_init(points, &iter);
+    int size[4] = {dom->size[0], dom->size[1], dom->size[2], 3};
+    for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+            for (int k = 0; k < size[2]; k ++) {
+                yyjson_val *point = yyjson_arr_iter_next(&iter);
+                // if (point == NULL) {
+                //     printf("NO POINT!\n");
+                // }
+                dom->X[id4(i,j,k,0,size)] = yyjson_get_real(yyjson_arr_get(point, 0));
+                dom->X[id4(i,j,k,1,size)] = yyjson_get_real(yyjson_arr_get(point, 1));
+                dom->X[id4(i,j,k,2,size)] = yyjson_get_real(yyjson_arr_get(point, 2));
+            }
+        }
+    }
+    for (int i = D::GUIDE - 1; i <= size[0] - D::GUIDE; i ++) {
+        for (int j = D::GUIDE - 1; j <= size[1] - D::GUIDE; j ++) {
+            for (int k = D::GUIDE - 1; k <= size[2] - D::GUIDE; k ++) {
+                double xe, xw, yn, ys, zt, zb;
+                xe = dom->X[id4(i+1,j  ,k  ,0,size)];
+                xw = dom->X[id4(i-1,j  ,k  ,0,size)];
+                yn = dom->X[id4(i  ,j+1,k  ,1,size)];
+                ys = dom->X[id4(i  ,j-1,k  ,1,size)];
+                zt = dom->X[id4(i  ,j  ,k+1,2,size)];
+                zb = dom->X[id4(i  ,j  ,k-1,2,size)];
+
+                double x1, x2, x3, k1, k2, k3, g1, g2, g3, de;
+                x1 = 0.5 * (xe - xw);
+                x2 = 0.5 * (yn - ys);
+                x3 = 0.5 * (zt - zb);
+                k1 = 1 / x1;
+                k2 = 1 / x2;
+                k3 = 1 / x3;
+                de = x1 * x2 * x3;
+                g1 = de * k1 * k1;
+                g2 = de * k2 * k2;
+                g3 = de * k3 * k3;
+                
+                dom->KX[id4(i,j,k,0,size)] = k1;
+                dom->KX[id4(i,j,k,1,size)] = k2;
+                dom->KX[id4(i,j,k,2,size)] = k3;
+                dom->G[ id4(i,j,k,0,size)] = g1;
+                dom->G[ id4(i,j,k,1,size)] = g2;
+                dom->G[ id4(i,j,k,2,size)] = g3;
+                dom->J[ id3(i,j,k,  size)] = de;
+            }
+        }
     }
 }

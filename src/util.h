@@ -1,9 +1,9 @@
 #ifndef _UTIL_H
 #define _UTIL_H 1
 
-#define id3(i,j,k,len) ((i)*len[1]*len[2] + (j)*len[2]+(k))
-#define id4(i,j,k,m,len) ((i)*len[1]*len[2]*len[3] + (j)*len[2]*len[3] + (k)*len[3] + (m))
-#define id5(i,j,k,m,n,len) ((i)*len[1]*len[2]*len[3]*len[4] + (j)*len[2]*len[3]*len[4] + (k)*len[3]*len[4] + (m)*len[4] +(n))
+#define id3(i,j,k,size) ((i)*size[1]*size[2] + (j)*size[2] + (k))
+#define id4(i,j,k,m,size) ((i)*size[1]*size[2]*size[3] + (j)*size[2]*size[3] + (k)*size[3] + (m))
+#define id5(i,j,k,m,n,size) ((i)*size[1]*size[2]*size[3]*size[4] + (j)*size[2]*size[3]*size[4] + (k)*size[3]*size[4] + (m)*size[4] +(n))
 
 class Util {
 public:

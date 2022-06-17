@@ -10,6 +10,8 @@ public:
     double       dp;
 public:
     enum Type{U, P};
+public:
+    Driver();
 };
 
 #endif
