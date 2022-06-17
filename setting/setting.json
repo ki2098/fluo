@@ -1,29 +1,27 @@
 {
-    "domain":[200, 10, 200],
+    "domain":[200, 200, 1],
     "boundary":[
         {
             "label":"moving_wall",
             "U":{"type":"fixedValue", "value":[1.0, 0.0, 0.0]},
             "P":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"outer", "face":["z+"]}
+            "topo":{"io":"outer", "face":["y+"]}
         },
         {
             "label":"fixed_wall",
             "U":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
             "P":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"outer", "face":["x+","z-","x-"]}
+            "topo":{"io":"outer", "face":["x+","x-","y-"]}
         },
         {
             "label":"front_back",
             "U":{"type":"symmetric"},
-            "P":{"type":"directional", "U":1.0, "direction":"y+"},
-            "topo":{"io":"outer", "face":["y+", "y-"]}
-        },
-        {
-            "label":"square",
-            "U":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
-            "P":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"inner", "shape":"cuboid", "position":[[40, 0, 40], [59, 9, 59]]}
+            "P":{"type":"symmetric"},
+            "topo":{"io":"outer", "face":["z+", "z-"]}
         }
-    ]
+    ],
+    "init":{"U":[0.0, 0.0, 0.0], "P":0.0},
+    "parameter":{"Re":5000, "dt":0.005, "timestep":20000, "TDiv":1e-4},
+    "monitor":{"type":"time", "interval":1.0},
+    "poisson":{"solver":"sor", "omega":1.2}
 }
