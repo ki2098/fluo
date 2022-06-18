@@ -3,13 +3,14 @@
 
 class Driver{
 public:
+    enum Type{U, P};
+public:
     unsigned int on;
     unsigned int direction;
     unsigned int type;
     double       value;
     double       dp;
-public:
-    enum Type{U, P};
+
 public:
     Driver();
 };

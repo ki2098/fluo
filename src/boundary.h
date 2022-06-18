@@ -24,7 +24,7 @@ public:
     double v; 
     double w; 
     double p; 
-    double nt; 
+    double nut; 
 };
 
 class BC {
@@ -37,6 +37,9 @@ public:
 public:
     BC();
     ~BC();
+public:
+    static void pre(unsigned int m, double _0, double _1, double &ref, double &dis);
+    static double eva(unsigned int flag, double ref, double dis, double value);
 };
 
 #endif

@@ -19,5 +19,8 @@
 .main:
 	g++ -c ./src/main.cpp -o ./obj/main.o
 
-all: .yyjson .jreader .alloc .boundary .domain .util .main
-	g++ obj/util.o obj/jreader.o obj/main.o obj/b.o ./obj/domain.o ./obj/alloc.o lib/yyjson.o -o bin/fluo++
+.driver:
+	g++ -c ./src/driver.cpp -o ./obj/driver.o
+
+all: .yyjson .jreader .alloc .boundary .domain .util .main .driver
+	g++ obj/util.o obj/jreader.o obj/main.o obj/b.o ./obj/domain.o ./obj/alloc.o ./obj/driver.o lib/yyjson.o -o bin/fluo++

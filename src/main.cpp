@@ -16,7 +16,7 @@ int main() {
     for (int i = 1; i <= bc.n; i ++) {
         printf("b%d:\n", i);
         cout << "\t" << bitset<32>(bc.b[i].flag) << endl;
-        printf("\t%.3lf, %.3lf, %.3lf, %.3lf, %.3lf\n", bc.b[i].u, bc.b[i].v, bc.b[i].w, bc.b[i].p, bc.b[i].nt);
+        printf("\t%.3lf, %.3lf, %.3lf, %.3lf, %.3lf\n", bc.b[i].u, bc.b[i].v, bc.b[i].w, bc.b[i].p, bc.b[i].nut);
     }
     printf("Outer BC:\n");
     cout << "\t" << bitset<32>(bc.f0) << endl;
@@ -55,7 +55,7 @@ int main() {
         for (int k = 0; k < size[2]; k ++) {
             for (int j = 0; j < size[1]; j ++) {
                 for (int i = 0; i < size[0]; i ++) {
-                    unsigned int flag  = dom.F[id3(i,j,k,size)];
+                    unsigned int flag  = dom.f[id3(i,j,k,size)];
                     unsigned int active = Util::ibsee(flag, Flag::Active, Util::Mask1);
                     unsigned int fe = Util::ibsee(flag, Flag::Fe, Util::Mask8);
                     unsigned int fn = Util::ibsee(flag, Flag::Fn, Util::Mask8);
@@ -63,17 +63,17 @@ int main() {
                     unsigned int me = Util::ibsee(flag, Flag::Me, Util::Mask1);
                     unsigned int mn = Util::ibsee(flag, Flag::Mn, Util::Mask1);
                     unsigned int mt = Util::ibsee(flag, Flag::Mt, Util::Mask1);
-                    double x  =  dom.X[id4(i,j,k,0,size)];
-                    double y  =  dom.X[id4(i,j,k,1,size)];
-                    double z  =  dom.X[id4(i,j,k,2,size)];
-                    double k1 = dom.KX[id4(i,j,k,0,size)];
-                    double k2 = dom.KX[id4(i,j,k,1,size)];
-                    double k3 = dom.KX[id4(i,j,k,2,size)];
-                    double g1 =  dom.G[id4(i,j,k,0,size)];
-                    double g2 =  dom.G[id4(i,j,k,1,size)];
-                    double g3 =  dom.G[id4(i,j,k,2,size)];
-                    double de =  dom.J[id3(i,j,k,  size)];
-                    fprintf(fo, "%.5e,%.5e,%.5e,%u,%u,%u,%u,%u,%u,%u,%.5e,%.5e,%.5e,%.5e,%.5e,%.5e,%.5e\n", x, y, z, active, fe, fn, ft, me, mn, mt, k1, k2, k3, g1, g2, g3, de);
+                    double x1 =  dom.x[id4(i,j,k,0,size)];
+                    double x2 =  dom.x[id4(i,j,k,1,size)];
+                    double x3 =  dom.x[id4(i,j,k,2,size)];
+                    double k1 = dom.kx[id4(i,j,k,0,size)];
+                    double k2 = dom.kx[id4(i,j,k,1,size)];
+                    double k3 = dom.kx[id4(i,j,k,2,size)];
+                    double g1 =  dom.g[id4(i,j,k,0,size)];
+                    double g2 =  dom.g[id4(i,j,k,1,size)];
+                    double g3 =  dom.g[id4(i,j,k,2,size)];
+                    double de = dom.ja[id3(i,j,k,  size)];
+                    fprintf(fo, "%.5e,%.5e,%.5e,%u,%u,%u,%u,%u,%u,%u,%.5e,%.5e,%.5e,%.5e,%.5e,%.5e,%.5e\n", x1, x2, x3, active, fe, fn, ft, me, mn, mt, k1, k2, k3, g1, g2, g3, de);
                 }
             }
         }
