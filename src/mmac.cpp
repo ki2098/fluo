@@ -90,7 +90,7 @@ void MMAC::interpolate_velocity(vector_field<real_t> &u, vector_field<real_t> &u
                             u1 = u.m[id4(i+1,j,k,0,u.size)];
                             BB::pre(m3, u0, u1, ref, dis);
                             uf = BB::eva(b3, ref, dis, u.b[id2(f3,0,u.bsize)]);
-                            kk = 1 /    (x.m[id4(i+1,j,k,0,x.size)] - x.m[id4(i,j,k,0,x.size)]);
+                            kk = 1 /    (x.m[id4(i+1,j,k,0,x.size)] -  x.m[id4(i,j,k,0,x.size)]);
                             uf = 0.5 * (ja.m[id3(i+1,j,k, ja.size)] + ja.m[id3(i,j,k, ja.size)]) * kk * uf;
                         } else {
                             u0 = uc.m[id4(i  ,j,k,0,uc.size)];
