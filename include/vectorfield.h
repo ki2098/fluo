@@ -36,7 +36,7 @@ public:
         #pragma acc update device(m[0:len])
     }
     void update_self() {
-        #pragma acc update seld(m[0:len])
+        #pragma acc update self(m[0:len])
     }
 };
 

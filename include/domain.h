@@ -9,10 +9,15 @@
 
 class Dom {
 public:
-    int  size[3];
-    int  len;
-    int  bcount;
-    Ctrl c;
+    int    size[3];
+    int    len;
+    int    bcount;
+    Ctrl   c;
+    struct UOB {
+        enum class Type {off, average, minmax, designated};
+        Type   type[6];
+        real_t value[6];
+    } uob;
 public:
     scalar_field<unsigned> f;
     vector_field<real_t>   u;
@@ -24,13 +29,14 @@ public:
     vector_field<real_t>   kx;
     vector_field<real_t>   g;
     scalar_field<real_t>   ja;
+    vector_field<real_t>   sz;
 public:
     const char *name;
 public:
     Dom(const char *label);
     void init(int *field, int nbound);
     void driver();
-    void monitor();
+    void pressure_zero_average();
     void tick() {c.time.idt ++;}
 public:
     void to_device() {

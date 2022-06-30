@@ -4,7 +4,247 @@
 #include "../include/boundary.h"
 #include "../include/flag.h"
 
-void load_bcfi(vector_field<real_t> &var, unsigned flag, yyjson_val *topo) {
+void fill_active(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
+    scalar_field<unsigned> &f = dom.f;
+    for (int i = 0; i < var.size[0]; i ++) {
+        for (int j = 0; j < var.size[1]; j ++) {
+            for (int k = 0; k < var.size[2]; k ++) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1)) {
+                    var.m[id3(i,j,k,var.size)] = init_var;
+                }
+            }
+        }
+    }
+}
+
+void fill_active(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
+    scalar_field<unsigned> &f = dom.f;
+    for (int i = 0; i < var.size[0]; i ++) {
+        for (int j = 0; j < var.size[1]; j ++) {
+            for (int k = 0; k < var.size[2]; k ++) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1)) {
+                    for (int m = 0; m < var.size[3]; m ++) {
+                        var.m[id4(i,j,k,m,var.size)] = init_var[m];
+                    }
+                }
+            }
+        }
+    }
+}
+
+void fill_outflow(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
+    if (Util::ibsee(var.obflag[0], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                var.m[id3(GUIDE-2,j,k,var.size)] = init_var;
+                var.m[id3(GUIDE-1,j,k,var.size)] = init_var;
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[1], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                var.m[id3(var.size[0]-GUIDE  ,j,k,var.size)] = init_var;
+                var.m[id3(var.size[0]-GUIDE+1,j,k,var.size)] = init_var;
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[2], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                var.m[id3(i,GUIDE-2,k,var.size)] = init_var;
+                var.m[id3(i,GUIDE-1,k,var.size)] = init_var;
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[3], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                var.m[id3(i,var.size[1]-GUIDE  ,k,var.size)] = init_var;
+                var.m[id3(i,var.size[1]-GUIDE+1,k,var.size)] = init_var;
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[4], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+                var.m[id3(i,j,GUIDE-2,var.size)] = init_var;
+                var.m[id3(i,j,GUIDE-1,var.size)] = init_var;
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[5], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+                var.m[id3(i,j,var.size[2]-GUIDE  ,var.size)] = init_var;
+                var.m[id3(i,j,var.size[2]-GUIDE+1,var.size)] = init_var;
+            }
+        }
+    }
+}
+
+void fill_outflow(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
+    if (Util::ibsee(var.obflag[0], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(GUIDE-2,j,k,m,var.size)] = init_var[m];
+                    var.m[id4(GUIDE-1,j,k,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[1], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(var.size[0]-GUIDE  ,j,k,m,var.size)] = init_var[m];
+                    var.m[id4(var.size[0]-GUIDE+1,j,k,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[2], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(i,GUIDE-2,k,m,var.size)] = init_var[m];
+                    var.m[id4(i,GUIDE-1,k,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[3], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(i,var.size[1]-GUIDE  ,k,m,var.size)] = init_var[m];
+                    var.m[id4(i,var.size[1]-GUIDE+1,k,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[4], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(i,j,GUIDE-2,m,var.size)] = init_var[m];
+                    var.m[id4(i,j,GUIDE-1,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+    if (Util::ibsee(var.obflag[5], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < var.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
+                for (int m = 0; m < var.size[3]; m ++) {
+                    var.m[id4(i,j,var.size[2]-GUIDE  ,m,var.size)] = init_var[m];
+                    var.m[id4(i,j,var.size[2]-GUIDE+1,m,var.size)] = init_var[m];
+                }
+            }
+        }
+    }
+}
+
+void fill_outflow_velocity_correction(Dom &dom) {
+    vector_field<real_t> &u  = dom.u;
+    vector_field<real_t> &uu = dom.uu;
+    vector_field<real_t> &kx = dom.kx;
+    scalar_field<real_t> &ja = dom.ja;
+
+    if (Util::ibsee(u.obflag[0], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < uu.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < uu.size[2] - GUIDE; k ++) {
+                real_t  u2 =  u.m[id4(GUIDE  ,j,k,0, u.size)];
+                real_t  u1 =  u.m[id4(GUIDE-1,j,k,0, u.size)];
+                real_t  k2 = kx.m[id4(GUIDE  ,j,k,0,kx.size)];
+                real_t  k1 = kx.m[id4(GUIDE-1,j,k,0,kx.size)];
+                real_t ja2 = ja.m[id3(GUIDE  ,j,k,  ja.size)];
+                real_t ja1 = ja.m[id3(GUIDE-1,j,k,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(GUIDE-1,j,k,0, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+    if (Util::ibsee(u.obflag[1], BB::outflow, Util::Mask1)) {
+        for (int j = GUIDE; j < uu.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < uu.size[2] - GUIDE; k ++) {
+                real_t  u2 =  u.m[id4( u.size[0]-GUIDE  ,j,k,0, u.size)];
+                real_t  u1 =  u.m[id4( u.size[0]-GUIDE-1,j,k,0, u.size)];
+                real_t  k2 = kx.m[id4(kx.size[0]-GUIDE  ,j,k,0,kx.size)];
+                real_t  k1 = kx.m[id4(kx.size[0]-GUIDE-1,j,k,0,kx.size)];
+                real_t ja2 = ja.m[id3(ja.size[0]-GUIDE  ,j,k,  ja.size)];
+                real_t ja1 = ja.m[id3(ja.size[0]-GUIDE-1,j,k,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(uu.size[0]-GUIDE-1,j,k,0, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+    if (Util::ibsee(u.obflag[2], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < uu.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < uu.size[2] - GUIDE; k ++) {
+                real_t  u2 =  u.m[id4(i,GUIDE  ,k,1, u.size)];
+                real_t  u1 =  u.m[id4(i,GUIDE-1,k,1, u.size)];
+                real_t  k2 = kx.m[id4(i,GUIDE  ,k,1,kx.size)];
+                real_t  k1 = kx.m[id4(i,GUIDE-1,k,1,kx.size)];
+                real_t ja2 = ja.m[id3(i,GUIDE  ,k,  ja.size)];
+                real_t ja1 = ja.m[id3(i,GUIDE-1,k,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(i,GUIDE-1,k,1, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+    if (Util::ibsee(u.obflag[3], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < uu.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < uu.size[2] - GUIDE; k ++) {
+                real_t  u2 =  u.m[id4(i, u.size[1]-GUIDE  ,k,1, u.size)];
+                real_t  u1 =  u.m[id4(i, u.size[1]-GUIDE-1,k,1, u.size)];
+                real_t  k2 = kx.m[id4(i,kx.size[1]-GUIDE  ,k,1,kx.size)];
+                real_t  k1 = kx.m[id4(i,kx.size[1]-GUIDE-1,k,1,kx.size)];
+                real_t ja2 = ja.m[id3(i,ja.size[1]-GUIDE  ,k,  ja.size)];
+                real_t ja1 = ja.m[id3(i,ja.size[1]-GUIDE-1,k,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(i,uu.size[1]-GUIDE-1,k,1, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+    if (Util::ibsee(u.obflag[4], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < uu.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < uu.size[1] - GUIDE; j ++) {
+                real_t  u2 =  u.m[id4(i,j,GUIDE  ,2, u.size)];
+                real_t  u1 =  u.m[id4(i,j,GUIDE-1,2, u.size)];
+                real_t  k2 = kx.m[id4(i,j,GUIDE  ,2,kx.size)];
+                real_t  k1 = kx.m[id4(i,j,GUIDE-1,2,kx.size)];
+                real_t ja2 = ja.m[id3(i,j,GUIDE  ,  ja.size)];
+                real_t ja1 = ja.m[id3(i,j,GUIDE-1,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(i,j,GUIDE-1,2, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+    if (Util::ibsee(u.obflag[5], BB::outflow, Util::Mask1)) {
+        for (int i = GUIDE; i < uu.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < uu.size[1] - GUIDE; j ++) {
+                real_t  u2 =  u.m[id4(i,j, u.size[1]-GUIDE  ,2, u.size)];
+                real_t  u1 =  u.m[id4(i,j, u.size[1]-GUIDE-1,2, u.size)];
+                real_t  k2 = kx.m[id4(i,j,kx.size[1]-GUIDE  ,2,kx.size)];
+                real_t  k1 = kx.m[id4(i,j,kx.size[1]-GUIDE-1,2,kx.size)];
+                real_t ja2 = ja.m[id3(i,j,ja.size[1]-GUIDE  ,  ja.size)];
+                real_t ja1 = ja.m[id3(i,j,ja.size[1]-GUIDE-1,  ja.size)];
+                u2 *= k2 * ja2;
+                u1 *= k1 * ja1;
+                uu.m[id4(i,j,uu.size[2]-GUIDE-1,2, u.size)] = 0.5 * (u1 + u2);
+            }
+        }
+    }
+}
+
+void JReader::load_bcfi(Dom &dom, vector_field<real_t> &var, unsigned flag, yyjson_val *topo) {
     yyjson_val *io = yyjson_obj_get(topo, "io");
     if (yyjson_equals_str(io, "outer")) {
         yyjson_val *faces = yyjson_obj_get(topo, "face");
@@ -46,7 +286,7 @@ void load_bcfi(vector_field<real_t> &var, unsigned flag, yyjson_val *topo) {
     }
 }
 
-void load_bcfi(scalar_field<real_t> &var, unsigned flag, yyjson_val *topo) {
+void JReader::load_bcfi(Dom &dom, scalar_field<real_t> &var, unsigned flag, yyjson_val *topo) {
     yyjson_val *io = yyjson_obj_get(topo, "io");
     if (yyjson_equals_str(io, "outer")) {
         yyjson_val *faces = yyjson_obj_get(topo, "face");
@@ -88,7 +328,91 @@ void load_bcfi(scalar_field<real_t> &var, unsigned flag, yyjson_val *topo) {
     }
 }
 
-int search_boundary(yyjson_val *boundary, const char *label) {
+void JReader::load_uobi(Dom &dom, real_t value, yyjson_val *topo) {
+    yyjson_val *io = yyjson_obj_get(topo, "io");
+    if (yyjson_equals_str(io, "outer")) {
+        yyjson_val *faces = yyjson_obj_get(topo, "face");
+        if (yyjson_is_arr(faces)) {
+            yyjson_arr_iter iter;
+            yyjson_arr_iter_init(faces, &iter);
+            yyjson_val *face;
+            while (face = yyjson_arr_iter_next(&iter)) {
+                if (yyjson_equals_str(face, "x-")) {
+                    dom.uob.value[0] = value;
+                } else if (yyjson_equals_str(face, "x+")) {
+                    dom.uob.value[1] = value;
+                } else if (yyjson_equals_str(face, "y-")) {
+                    dom.uob.value[2] = value;
+                } else if (yyjson_equals_str(face, "y+")) {
+                    dom.uob.value[3] = value;
+                } else if (yyjson_equals_str(face, "z-")) {
+                    dom.uob.value[4] = value;
+                } else if (yyjson_equals_str(face, "z+")) {
+                    dom.uob.value[5] = value;
+                }
+            }
+        } else {
+            yyjson_val *face = faces;
+            if (yyjson_equals_str(face, "x-")) {
+                dom.uob.value[0] = value;
+            } else if (yyjson_equals_str(face, "x+")) {
+                dom.uob.value[1] = value;
+            } else if (yyjson_equals_str(face, "y-")) {
+                dom.uob.value[2] = value;
+            } else if (yyjson_equals_str(face, "y+")) {
+                dom.uob.value[3] = value;
+            } else if (yyjson_equals_str(face, "z-")) {
+                dom.uob.value[4] = value;
+            } else if (yyjson_equals_str(face, "z+")) {
+                dom.uob.value[5] = value;
+            }
+        }
+    }
+}
+
+void JReader::load_uobi(Dom &dom, Dom::UOB::Type type, yyjson_val *topo) {
+    yyjson_val *io = yyjson_obj_get(topo, "io");
+    if (yyjson_equals_str(io, "outer")) {
+        yyjson_val *faces = yyjson_obj_get(topo, "face");
+        if (yyjson_is_arr(faces)) {
+            yyjson_arr_iter iter;
+            yyjson_arr_iter_init(faces, &iter);
+            yyjson_val *face;
+            while (face = yyjson_arr_iter_next(&iter)) {
+                if (yyjson_equals_str(face, "x-")) {
+                    dom.uob.type[0] = type;
+                } else if (yyjson_equals_str(face, "x+")) {
+                    dom.uob.type[1] = type;
+                } else if (yyjson_equals_str(face, "y-")) {
+                    dom.uob.type[2] = type;
+                } else if (yyjson_equals_str(face, "y+")) {
+                    dom.uob.type[3] = type;
+                } else if (yyjson_equals_str(face, "z-")) {
+                    dom.uob.type[4] = type;
+                } else if (yyjson_equals_str(face, "z+")) {
+                    dom.uob.type[5] = type;
+                }
+            }
+        } else {
+            yyjson_val *face = faces;
+            if (yyjson_equals_str(face, "x-")) {
+                dom.uob.type[0] = type;
+            } else if (yyjson_equals_str(face, "x+")) {
+                dom.uob.type[1] = type;
+            } else if (yyjson_equals_str(face, "y-")) {
+                dom.uob.type[2] = type;
+            } else if (yyjson_equals_str(face, "y+")) {
+                dom.uob.type[3] = type;
+            } else if (yyjson_equals_str(face, "z-")) {
+                dom.uob.type[4] = type;
+            } else if (yyjson_equals_str(face, "z+")) {
+                dom.uob.type[5] = type;
+            }
+        }
+    }
+}
+
+int JReader::search_boundary(yyjson_val *boundary, const char *label) {
     yyjson_arr_iter iter;
     yyjson_arr_iter_init(boundary, &iter);
     int index = 1;
@@ -142,15 +466,16 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             } else if (yyjson_equals_str(type, "fixedGradiet")) {
                 flag = Util::ibset(flag, BB::neumann, Util::Mask1, 1U);
             } else if (yyjson_equals_str(type, "symmetric")) {
-                load_bcfi(u, BB::symmetric, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, u, BB::slip, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "cyclic")) {
-                load_bcfi(u, BB::cyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, u, BB::cyclic, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "directional")) {
-                load_bcfi(u, BB::cyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, u, BB::cyclic, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "outflow")) {
-                load_bcfi(u, BB::outflow, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, u, BB::outflow, yyjson_obj_get(bound, "topo"));
+                flag = Util::ibset(flag, BB::uu_locked, Util::Mask1, 1U);
             } else if (yyjson_equals_str(type, "driver")) {
-                load_bcfi(u, BB::semicyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, u, BB::semicyclic, yyjson_obj_get(bound, "topo"));
             }
             value = yyjson_obj_get(var, "value");
             u.b[id2(index,0,u.bsize)] = yyjson_get_real(yyjson_arr_get(value, 0));
@@ -168,13 +493,13 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             } else if (yyjson_equals_str(type, "fixedGradient")) {
                 flag = Util::ibset(flag, BB::neumann, Util::Mask1, 1U);
             } else if (yyjson_equals_str(type, "symmetric")) {
-                load_bcfi(p, BB::symmetric, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, p, BB::symmetric, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "cyclic")) {
-                load_bcfi(p, BB::cyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, p, BB::cyclic, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "directional")) {
-                load_bcfi(p, BB::directional, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, p, BB::directional, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "driver")) {
-                load_bcfi(p, BB::driver, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, p, BB::driver, yyjson_obj_get(bound, "topo"));
             }
             value = yyjson_obj_get(var, "value");
             p.b[index] = yyjson_get_real(value);
@@ -182,7 +507,6 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
         }
         var = yyjson_obj_get(bound, "nut");
         if (var) {
-            
             unsigned int flag = 0U;
             type = yyjson_obj_get(var, "type");
             if (yyjson_equals_str(type, "fixedValue")) {
@@ -190,17 +514,28 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             } else if (yyjson_equals_str(type, "fixedGradient")) {
                 flag = Util::ibset(flag, BB::neumann, Util::Mask1, 1U);
             } else if (yyjson_equals_str(type, "symmetric")) {
-                load_bcfi(nut, BB::symmetric, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, nut, BB::symmetric, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "cyclic")) {
-                load_bcfi(nut, BB::cyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, nut, BB::cyclic, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "directional")) {
-                load_bcfi(nut, BB::cyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, nut, BB::cyclic, yyjson_obj_get(bound, "topo"));
             } else if (yyjson_equals_str(type, "driver")) {
-                load_bcfi(nut, BB::semicyclic, yyjson_obj_get(bound, "topo"));
+                load_bcfi(dom, nut, BB::semicyclic, yyjson_obj_get(bound, "topo"));
             }
             value = yyjson_obj_get(var, "value");
             nut.b[index] = yyjson_get_real(value);
             nut.bflag[index] = flag;
+        }
+        var = yyjson_obj_get(bound, "outflow");
+        if (var) {
+            if (yyjson_is_real(var)) {
+                load_uobi(dom, yyjson_get_real(var), yyjson_obj_get(bound, "topo"));
+                load_uobi(dom, Dom::UOB::Type::designated, yyjson_obj_get(bound, "topo"));
+            } else if (yyjson_equals_str(var, "average")) {
+                load_uobi(dom, Dom::UOB::Type::average, yyjson_obj_get(bound, "topo"));
+            } else if (yyjson_equals_str(var, "minmax")) {
+                load_uobi(dom, Dom::UOB::Type::minmax, yyjson_obj_get(bound, "topo"));
+            }
         }
         index ++;
     }
@@ -259,7 +594,72 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             yyjson_arr_iter fiter;
             yyjson_arr_iter_init(faces, &fiter);
             yyjson_val *face;
-            while (face = yyjson_arr_iter_next(&fiter)) {
+            if (yyjson_is_arr(faces)) {
+                while (face = yyjson_arr_iter_next(&fiter)) {
+                    if (yyjson_equals_str(face, "x+")) {
+                        for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
+                            for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
+                                int i = dom.size[0] - GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    } else if (yyjson_equals_str(face, "x-")) {
+                        for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
+                            for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
+                                int i = GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    } else if (yyjson_equals_str(face, "y+")) {
+                        for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
+                            for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
+                                int j = dom.size[1] - GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    } else if (yyjson_equals_str(face, "y-")) {
+                        for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
+                            for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
+                                int j = GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    } else if (yyjson_equals_str(face, "z+")) {
+                        for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
+                            for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
+                                int k = dom.size[2] - GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    } else if (yyjson_equals_str(face, "z-")) {
+                        for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
+                            for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
+                                int k = GUIDE - 1;
+                                unsigned int flag = f.m[id3(i,j,k,f.size)];
+                                flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
+                                flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
+                                f.m[id3(i,j,k,f.size)] = flag;
+                            }
+                        }
+                    }
+                }
+            } else {
+                face = faces;
                 if (yyjson_equals_str(face, "x+")) {
                     for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
                         for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
@@ -429,24 +829,6 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
         index ++;
     }
 
-    yyjson_val *init = yyjson_obj_get(domain, "init");
-    real_t u_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 0));
-    real_t v_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 1));
-    real_t w_init = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 2));
-    real_t p_init = yyjson_get_real(yyjson_obj_get(init, "p"));
-    for (int i = 0; i < dom.size[0]; i ++) {
-        for (int j = 0; j < dom.size[1]; j ++) {
-            for (int k = 0; k < dom.size[2]; k ++) {
-                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1)) {
-                    u.m[id4(i,j,k,0,u.size)] = u_init;
-                    u.m[id4(i,j,k,1,u.size)] = v_init;
-                    u.m[id4(i,j,k,2,u.size)] = w_init;
-                    p.m[id3(i,j,k,  p.size)] = p_init;
-                }
-            }
-        }
-    }
-
     yyjson_val *time = yyjson_obj_get(root, "time");
     c.time.dt = yyjson_get_real(yyjson_obj_get(time, "dt"));
     if (yyjson_obj_get(time, "t")) {
@@ -457,7 +839,7 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
 
     yyjson_val *flow = yyjson_obj_get(root, "flow");
     c.flow.re = yyjson_get_int(yyjson_obj_get(flow, "re"));
-    c.flow.ri = 1 / c.flow.re;
+    c.flow.ri = 1.0 / c.flow.re;
     if (yyjson_equals_str(yyjson_obj_get(flow, "scheme"), "upwind3")) {
         c.flow.scheme = Ctrl::Flow::Scheme::upwind3;
     } else if (yyjson_equals_str(yyjson_obj_get(flow, "scheme"), "muscl")) {
@@ -469,12 +851,15 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
     c.monitor.type = Ctrl::Monitor::Type::off;
     yyjson_val *monitor = yyjson_obj_get(root, "monitor");
     if (monitor) {
-        if (yyjson_equals_str(yyjson_obj_get(monitor, "type"), "t")) {
-            c.monitor.type = Ctrl::Monitor::Type::T;
-            c.monitor.t_interval = yyjson_get_real(yyjson_obj_get(monitor, "interval"));
-        } else if (yyjson_equals_str(yyjson_obj_get(monitor, "type"), "dt")) {
+        yyjson_val *interval = yyjson_obj_get(monitor, "dt");
+        if (interval) {
             c.monitor.type = Ctrl::Monitor::Type::Dt;
-            c.monitor.dt_interval = yyjson_get_int(yyjson_obj_get(monitor, "interval"));
+            c.monitor.dt_interval = yyjson_get_int(interval);
+        }
+        interval = yyjson_obj_get(monitor, "t");
+        if (interval) {
+            c.monitor.type = Ctrl::Monitor::Type::Dt;
+            c.monitor.dt_interval = int(yyjson_get_real(interval) / c.time.dt);
         }
     }
 
@@ -502,6 +887,7 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
     vector_field<real_t> &kx = dom.kx;
     vector_field<real_t> &g  = dom.g;
     scalar_field<real_t> &ja = dom.ja;
+    vector_field<real_t> &sz = dom.sz;
     yyjson_doc *mesh_doc = yyjson_read_file(mesh_file, 0, NULL, NULL);
     yyjson_val *mesh_root = yyjson_doc_get_root(mesh_doc);
     yyjson_val *points = yyjson_obj_get(mesh_root, "point");
@@ -510,27 +896,22 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
         for (int j = 0; j < dom.size[1]; j ++) {
             for (int k = 0; k < dom.size[2]; k ++) {
                 yyjson_val *point = yyjson_arr_iter_next(&iter);
-                x.m[id4(i,j,k,0,x.size)] = yyjson_get_real(yyjson_arr_get(point, 0));
-                x.m[id4(i,j,k,1,x.size)] = yyjson_get_real(yyjson_arr_get(point, 1));
-                x.m[id4(i,j,k,2,x.size)] = yyjson_get_real(yyjson_arr_get(point, 2));
+                x.m[ id4(i,j,k,0, x.size)] = yyjson_get_real(yyjson_arr_get(point, 0));
+                x.m[ id4(i,j,k,1, x.size)] = yyjson_get_real(yyjson_arr_get(point, 1));
+                x.m[ id4(i,j,k,2, x.size)] = yyjson_get_real(yyjson_arr_get(point, 2));
+                sz.m[id4(i,j,k,0,sz.size)] = yyjson_get_real(yyjson_arr_get(point, 3));
+                sz.m[id4(i,j,k,1,sz.size)] = yyjson_get_real(yyjson_arr_get(point, 4));
+                sz.m[id4(i,j,k,2,sz.size)] = yyjson_get_real(yyjson_arr_get(point, 5));
             }
         }
     }
-    for (int i = GUIDE - 1; i <= dom.size[0] - GUIDE; i ++) {
-        for (int j = GUIDE - 1; j <= dom.size[1] - GUIDE; j ++) {
-            for (int k = GUIDE - 1; k <= dom.size[2] - GUIDE; k ++) {
-                real_t xe, xw, yn, ys, zt, zb;
-                xe = x.m[id4(i+1,j  ,k  ,0,x.size)];
-                xw = x.m[id4(i-1,j  ,k  ,0,x.size)];
-                yn = x.m[id4(i  ,j+1,k  ,1,x.size)];
-                ys = x.m[id4(i  ,j-1,k  ,1,x.size)];
-                zt = x.m[id4(i  ,j  ,k+1,2,x.size)];
-                zb = x.m[id4(i  ,j  ,k-1,2,x.size)];
-
+    for (int i = 0; i < dom.size[0]; i ++) {
+        for (int j = 0; j < dom.size[1]; j ++) {
+            for (int k = 0; k < dom.size[2]; k ++) {
                 real_t x1, x2, x3, k1, k2, k3, g1, g2, g3, de;
-                x1 = 0.5 * (xe - xw);
-                x2 = 0.5 * (yn - ys);
-                x3 = 0.5 * (zt - zb);
+                x1 = sz.m[id4(i,j,k,0,sz.size)];
+                x2 = sz.m[id4(i,j,k,1,sz.size)];
+                x3 = sz.m[id4(i,j,k,2,sz.size)];
                 k1 = 1 / x1;
                 k2 = 1 / x2;
                 k3 = 1 / x3;
@@ -549,4 +930,15 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             }
         }
     }
+
+    yyjson_val *init = yyjson_obj_get(root, "init");
+    real_t u1_init   = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 0));
+    real_t u2_init   = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 1));
+    real_t u3_init   = yyjson_get_real(yyjson_arr_get(yyjson_obj_get(init, "u"), 2));
+    real_t p_init    = yyjson_get_real(yyjson_obj_get(init, "p"));
+    real_t u_init[3] = {u1_init, u2_init, u3_init};
+    fill_active(dom, u, u_init);
+    fill_active(dom, p, p_init);
+    fill_outflow(dom, u, u_init);
+    fill_outflow_velocity_correction(dom);
 }

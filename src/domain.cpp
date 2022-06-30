@@ -1,4 +1,5 @@
 #include "../include/domain.h"
+#include "../include/flag.h"
 
 Dom::Dom(const char *label) {
     name = label;
@@ -20,10 +21,7 @@ void Dom::init(int *field, int nbound) {
     kx.init(size, 3, bcount);
     g.init(size, 3, bcount);
     ja.init(size, bcount);
-}
-
-void Dom::monitor() {
-
+    sz.init(size, 3, bcount);
 }
 
 void Dom::driver() {
@@ -61,4 +59,35 @@ void Dom::driver() {
             }
         }
     }
+}
+
+void Dom::pressure_zero_average() {
+    real_t sum = 0;
+    int    cnt = 0;
+
+    #pragma acc kernels loop independent collapse(3) reduction(+:sum, cnt) present(this[0:1], f, p) copy(sum, cnt)
+    for (int i = GUIDE; i < p.size[0] - GUIDE; i ++) {
+        for (int j = GUIDE; j < p.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < p.size[2] - GUIDE; k ++) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)],Flag::Active, Util::Mask1)) {
+                    sum += p.m[id3(i,j,k,p.size)];
+                    cnt += 1;
+                }
+            }
+        }
+    }
+
+    real_t avg = sum / cnt;
+
+    #pragma acc kernels loop independent collapse(3) present(this[0:1], f, p) copyin(avg)
+    for (int i = GUIDE; i < p.size[0] - GUIDE; i ++) {
+        for (int j = GUIDE; j < p.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < p.size[2] - GUIDE; k ++) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)],Flag::Active, Util::Mask1)) {
+                    p.m[id3(i,j,k,p.size)] -= avg;;
+                }
+            }
+        }
+    }
+
 }

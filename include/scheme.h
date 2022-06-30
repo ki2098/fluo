@@ -58,7 +58,7 @@ static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t 
     u00 = us1 + 0.25 * (m1 * g1 + m2 * g2) * eps;
     f1  = 0.5 * (vfn * (u11 + u10) - fabs(vfn) * (u11 - u10));
     f0  = 0.5 * (vfs * (u01 + u00) - fabs(vfs) * (u01 - u00));
-    adv += (f1 - f0) / det;
+    adv+= (f1 - f0) / det;
 
     d4  = ut2 - ut1;
     d3  = ut1 - uc0;
@@ -80,7 +80,7 @@ static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t 
     u00 = ub1 + 0.25 * (m1 * g1 + m2 * g2) * epb;
     f1  = 0.5 * (wft * (u11 + u10) - fabs(wft) * (u11 - u10));
     f0  = 0.5 * (wfb * (u01 + u00) - fabs(wfb) * (u01 - u00));
-    adv += (f1 - f0) / det;
+    adv+= (f1 - f0) / det;
 
     return adv;
 }

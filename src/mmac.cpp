@@ -1,8 +1,8 @@
+#include <stdio.h>
 #include "../include/scheme.h"
 #include "../include/mmac.h"
 #include "../include/flag.h"
 #include "../include/boundary.h"
-#include <vector>
 
 void MMAC::divergence_velocity(vector_field<real_t> &uu, scalar_field<real_t> &div, real_t &div_norm, Dom &dom) {
     scalar_field<real_t>   &ja = dom.ja;
@@ -29,7 +29,7 @@ void MMAC::divergence_velocity(vector_field<real_t> &uu, scalar_field<real_t> &d
                     det = ja.m[id3(i  ,j  ,k  ,  ja.size)];
 
                     dc0 = (ufe + vfn + wft - ufw - vfs - wfb) / det;
-                    sum = sum + dc0 * dc0 * det;
+                    sum += dc0 * dc0 * det;
                     cnt += det;
 
                     div.m[id3(i,j,k,div.size)] = dc0;
@@ -37,7 +37,6 @@ void MMAC::divergence_velocity(vector_field<real_t> &uu, scalar_field<real_t> &d
             }
         }
     }
-
     div_norm = sqrt(sum / cnt);
 }
 
@@ -79,63 +78,81 @@ void MMAC::interpolate_velocity(vector_field<real_t> &u, vector_field<real_t> &u
                 real_t ref, dis;
                 ff = f.m[id3(i,j,k,f.size)];
 
-                m3 = Util::ibsee(ff, Flag::Me, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Fe, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i  ,j,k,0,u.size)];
-                    u1 = u.m[id4(i+1,j,k,0,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,0,u.bsize)]);
-                    kk = 1 / (x.m[id4(i+1,j,k,0,x.size)] - x.m[id4(i,j,k,0,x.size)]);
-                    uf = 0.5 * (ja.m[id3(i+1,j,k,ja.size)] + ja.m[id3(i,j,k,ja.size)]) * kk * uf;
-                } else {
-                    u0 = uc.m[id4(i  ,j,k,0,uc.size)];
-                    u1 = uc.m[id4(i+1,j,k,0,uc.size)];
-                    uf = 0.5 * (u0 + u1);
+                if (j >= GUIDE && k >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Me, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Fe, Util::Mask8);
+                    if (Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        uu.m[id4(i,j,k,0,uu.size)] = dom.uu.m[id4(i,j,k,0,dom.uu.size)];
+                    } else {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i  ,j,k,0,u.size)];
+                            u1 = u.m[id4(i+1,j,k,0,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,0,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i+1,j,k,0,x.size)] - x.m[id4(i,j,k,0,x.size)]);
+                            uf = 0.5 * (ja.m[id3(i+1,j,k, ja.size)] + ja.m[id3(i,j,k, ja.size)]) * kk * uf;
+                        } else {
+                            u0 = uc.m[id4(i  ,j,k,0,uc.size)];
+                            u1 = uc.m[id4(i+1,j,k,0,uc.size)];
+                            uf = 0.5 * (u0 + u1);
+                        }
+                        uu.m[id4(i,j,k,0,uu.size)] = uf;
+                    }
                 }
-                uu.m[id4(i,j,k,0,uu.size)] = uf;
 
-                m3 = Util::ibsee(ff, Flag::Mn, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Fn, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i,j  ,k,1,u.size)];
-                    u1 = u.m[id4(i,j+1,k,1,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,1,u.bsize)]);
-                    kk = 1 / (x.m[id4(i,j+1,k,1,x.size)] - x.m[id4(i,j,k,1,x.size)]);
-                    uf = 0.5 * (ja.m[id3(i,j+1,k,ja.size)] + ja.m[id3(i,j,k,ja.size)]) * kk * uf;
-                } else {
-                    u0 = uc.m[id4(i,j  ,k,1,uc.size)];
-                    u1 = uc.m[id4(i,j+1,k,1,uc.size)];
-                    uf = 0.5 * (u0 + u1);
+                if (i >= GUIDE && k >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Mn, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Fn, Util::Mask8);
+                    if (Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        uu.m[id4(i,j,k,1,uu.size)] = dom.uu.m[id4(i,j,k,1,dom.uu.size)];
+                    } else {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i,j  ,k,1,u.size)];
+                            u1 = u.m[id4(i,j+1,k,1,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,1,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i,j+1,k,1,x.size)] -  x.m[id4(i,j,k,1,x.size)]);
+                            uf = 0.5 * (ja.m[id3(i,j+1,k, ja.size)] + ja.m[id3(i,j,k, ja.size)]) * kk * uf;
+                        } else {
+                            u0 = uc.m[id4(i,j  ,k,1,uc.size)];
+                            u1 = uc.m[id4(i,j+1,k,1,uc.size)];
+                            uf = 0.5 * (u0 + u1);
+                        }
+                        uu.m[id4(i,j,k,1,uu.size)] = uf;
+                    }
                 }
-                uu.m[id4(i,j,k,1,uu.size)] = uf;
 
-                m3 = Util::ibsee(ff, Flag::Mt, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Ft, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i,j,k  ,2,u.size)];
-                    u1 = u.m[id4(i,j,k+1,2,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,2,u.bsize)]);
-                    kk = 1 / (x.m[id4(i,j,k+1,2,x.size)] - x.m[id4(i,j,k,2,x.size)]);
-                    uf = 0.5 * (ja.m[id3(i,j,k+1,ja.size)] + ja.m[id3(i,j,k,ja.size)]) * kk * uf;
-                } else {
-                    u0 = uc.m[id4(i,j,k  ,2,uc.size)];
-                    u1 = uc.m[id4(i,j,k+1,2,uc.size)];
-                    uf = 0.5 * (u0 + u1);
+                if (i >= GUIDE && j >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Mt, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Ft, Util::Mask8);
+                    if (Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        uu.m[id4(i,j,k,2,uu.size)] = dom.uu.m[id4(i,j,k,2,dom.uu.size)];
+                    } else {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i,j,k  ,2,u.size)];
+                            u1 = u.m[id4(i,j,k+1,2,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,2,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i,j,k+1,2,x.size)] -  x.m[id4(i,j,k,2,x.size)]);
+                            uf = 0.5 * (ja.m[id3(i,j,k+1, ja.size)] + ja.m[id3(i,j,k, ja.size)]) * kk * uf;
+                        } else {
+                            u0 = uc.m[id4(i,j,k  ,2,uc.size)];
+                            u1 = uc.m[id4(i,j,k+1,2,uc.size)];
+                            uf = 0.5 * (u0 + u1);
+                        }
+                        uu.m[id4(i,j,k,2,uu.size)] = uf;
+                    }
                 }
-                uu.m[id4(i,j,k,2,uu.size)] = uf;
             }
         }
     }
 }
 
 void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, vector_field<real_t> &ua, scalar_field<real_t> &nut, Dom &dom) {
-    Ctrl                   &c = dom.c;
+    Ctrl                   &c  = dom.c;
     scalar_field<unsigned> &f  = dom.f;
     vector_field<real_t>   &g  = dom.g;
     scalar_field<real_t>   &ja = dom.ja;
@@ -157,8 +174,6 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     real_t uw2, us2, ub2;
                     real_t ufe, vfn, wft;
                     real_t ufw, vfs, wfb;
-                    real_t ute, utn, utt;
-                    real_t utw, uts, utb;
                     real_t de1, dn1, dt1;
                     real_t dw1, ds1, db1;
                     real_t nc0;
@@ -168,9 +183,6 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     real_t ref, dis;
                     real_t ad1, ad2, ad3;
                     real_t vi1, vi2, vi3;
-                    real_t xc0, yc0, zc0;
-                    real_t xe1, yn1, zt1;
-                    real_t xw1, ys1, zb1;
                     real_t g1c, g2c, g3c;
                     real_t g1e, g2n, g3t;
                     real_t g1w, g2s, g3b;
@@ -208,15 +220,15 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     g1w =  g.m[id4(i-1,j  ,k  ,0, g.size)];
                     g2s =  g.m[id4(i  ,j-1,k  ,1, g.size)];
                     g3b =  g.m[id4(i  ,j  ,k-1,2, g.size)];
-                    f11 =  f.m[id3(i-2,j  ,j  ,   f.size)];
+                    f11 =  f.m[id3(i-2,j  ,k  ,   f.size)];
                     f12 =  f.m[id3(i-1,j  ,k  ,   f.size)];
                     f13 =  f.m[id3(i  ,j  ,k  ,   f.size)];
                     f14 =  f.m[id3(i+1,j  ,k  ,   f.size)];
-                    f21 =  f.m[id3(i  ,j-2,j  ,   f.size)];
+                    f21 =  f.m[id3(i  ,j-2,k  ,   f.size)];
                     f22 =  f.m[id3(i  ,j-1,k  ,   f.size)];
                     f23 =  f.m[id3(i  ,j  ,k  ,   f.size)];
                     f24 =  f.m[id3(i  ,j+1,k  ,   f.size)];
-                    f31 =  f.m[id3(i  ,j  ,j-2,   f.size)];
+                    f31 =  f.m[id3(i  ,j  ,k-2,   f.size)];
                     f32 =  f.m[id3(i  ,j  ,k-1,   f.size)];
                     f33 =  f.m[id3(i  ,j  ,k  ,   f.size)];
                     f34 =  f.m[id3(i  ,j  ,k+1,   f.size)];
@@ -252,15 +264,15 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     nw1 = nut.m[id3(i-1,j  ,k  ,nut.size)];
                     ns1 = nut.m[id3(i  ,j-1,k  ,nut.size)];
                     nb1 = nut.m[id3(i  ,j  ,k-1,nut.size)];
-                    b12 = nut.bflag[f12];
-                    b13 = nut.bflag[f13];
-                    b22 = nut.bflag[f22];
-                    b23 = nut.bflag[f23];
-                    b32 = nut.bflag[f32];
-                    b33 = nut.bflag[f33];
+                    b12 = Util::ibsee(nut.bflag[f12], 0, Util::Mask8);
+                    b13 = Util::ibsee(nut.bflag[f13], 0, Util::Mask8);
+                    b22 = Util::ibsee(nut.bflag[f22], 0, Util::Mask8);
+                    b23 = Util::ibsee(nut.bflag[f23], 0, Util::Mask8);
+                    b32 = Util::ibsee(nut.bflag[f32], 0, Util::Mask8);
+                    b33 = Util::ibsee(nut.bflag[f33], 0, Util::Mask8);
                     if (b13) {
                         BB::pre(m13, nc0, ne1, ref, dis);
-                        ne1 = 2 * BB::eva(b13, ref, dis, nut.b[f12]) - nc0;
+                        ne1 = 2 * BB::eva(b13, ref, dis, nut.b[f13]) - nc0;
                     }
                     if (b23) {
                         BB::pre(m23, nc0, nn1, ref, dis);
@@ -283,18 +295,18 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                         nb1 = 2 * BB::eva(b32, ref, dis, nut.b[f32]) - nc0;
                     }
 
-                    b11 = u.bflag[f11];
-                    b12 = u.bflag[f12];
-                    b13 = u.bflag[f13];
-                    b14 = u.bflag[f14];
-                    b21 = u.bflag[f21];
-                    b22 = u.bflag[f22];
-                    b23 = u.bflag[f23];
-                    b24 = u.bflag[f24];
-                    b31 = u.bflag[f31];
-                    b32 = u.bflag[f32];
-                    b33 = u.bflag[f33];
-                    b34 = u.bflag[f34];
+                    b11 = Util::ibsee(u.bflag[f11], 0, Util::Mask8);
+                    b12 = Util::ibsee(u.bflag[f12], 0, Util::Mask8);
+                    b13 = Util::ibsee(u.bflag[f13], 0, Util::Mask8);
+                    b14 = Util::ibsee(u.bflag[f14], 0, Util::Mask8);
+                    b21 = Util::ibsee(u.bflag[f21], 0, Util::Mask8);
+                    b22 = Util::ibsee(u.bflag[f22], 0, Util::Mask8);
+                    b23 = Util::ibsee(u.bflag[f23], 0, Util::Mask8);
+                    b24 = Util::ibsee(u.bflag[f24], 0, Util::Mask8);
+                    b31 = Util::ibsee(u.bflag[f31], 0, Util::Mask8);
+                    b32 = Util::ibsee(u.bflag[f32], 0, Util::Mask8);
+                    b33 = Util::ibsee(u.bflag[f33], 0, Util::Mask8);
+                    b34 = Util::ibsee(u.bflag[f34], 0, Util::Mask8);
                     epe = (b13)? 0 : 1;
                     epn = (b23)? 0 : 1;
                     ept = (b33)? 0 : 1;
@@ -382,51 +394,51 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     ut2 = u.m[id4(i  ,j  ,k+2,1,u.size)];
                     if (b13) {
                         BB::pre(m13, uc0, ue1, ref, dis);
-                        ue1 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,0,u.bsize)]) - uc0;
+                        ue1 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,1,u.bsize)]) - uc0;
                     }
                     if (b23) {
                         BB::pre(m23, uc0, un1, ref, dis);
-                        un1 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,0,u.bsize)]) - uc0;
+                        un1 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,1,u.bsize)]) - uc0;
                     }
                     if (b33) {
                         BB::pre(m33, uc0, ut1, ref, dis);
-                        ut1 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,0,u.bsize)]) - uc0;
+                        ut1 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,1,u.bsize)]) - uc0;
                     }
                     if (b12) {
                         BB::pre(m12, uw1, uc0, ref, dis);
-                        uw1 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,0,u.bsize)]) - uc0;
+                        uw1 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,1,u.bsize)]) - uc0;
                     }
                     if (b22) {
                         BB::pre(m22, us1, uc0, ref, dis);
-                        us1 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,0,u.bsize)]) - uc0;
+                        us1 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,1,u.bsize)]) - uc0;
                     }
                     if (b32) {
                         BB::pre(m32, ub1, uc0, ref, dis);
-                        ub1 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,0,u.bsize)]) - uc0;
+                        ub1 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,1,u.bsize)]) - uc0;
                     }
                     if (b14) {
                         BB::pre(m14, ue1, ue2, ref, dis);
-                        ue2 = 2 * BB::eva(b14, ref, dis, u.b[id2(f14,0,u.bsize)]) - ue1;
+                        ue2 = 2 * BB::eva(b14, ref, dis, u.b[id2(f14,1,u.bsize)]) - ue1;
                     }
                     if (b24) {
                         BB::pre(m24, un1, un2, ref, dis);
-                        un2 = 2 * BB::eva(b24, ref, dis, u.b[id2(f24,0,u.bsize)]) - un1;
+                        un2 = 2 * BB::eva(b24, ref, dis, u.b[id2(f24,1,u.bsize)]) - un1;
                     }
                     if (b34) {
                         BB::pre(m34, ut1, ut2, ref, dis);
-                        ut2 = 2 * BB::eva(b34, ref, dis, u.b[id2(f34,0,u.bsize)]) - ut1;
+                        ut2 = 2 * BB::eva(b34, ref, dis, u.b[id2(f34,1,u.bsize)]) - ut1;
                     }
                     if (b11) {
                         BB::pre(m11, uw2, uw1, ref, dis);
-                        uw2 = 2 * BB::eva(b11, ref, dis, u.b[id2(f11,0,u.bsize)]) - uw1;
+                        uw2 = 2 * BB::eva(b11, ref, dis, u.b[id2(f11,1,u.bsize)]) - uw1;
                     }
                     if (b21) {
                         BB::pre(m21, us2, us1, ref, dis);
-                        us2 = 2 * BB::eva(b21, ref, dis, u.b[id2(f21,0,u.bsize)]) - us1;
+                        us2 = 2 * BB::eva(b21, ref, dis, u.b[id2(f21,1,u.bsize)]) - us1;
                     }
                     if (b31) {
                         BB::pre(m31, ub2, ub1, ref, dis);
-                        ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,0,u.bsize)]) - ub1;
+                        ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,1,u.bsize)]) - ub1;
                     }
                     ad2 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
                     vi2 = Scheme::viscosity(0, 0, 0, 0, 0, 0, mag, uc0, ue1, un1, ut1, uw1, us1, ub1, de1, dn1, dt1, dw1, ds1, db1, nc0, ne1, nn1, nt1, nw1, ns1, nb1, det, g1c, g2c, g3c, g1e, g2n, g3t, g1w, g2s, g3b, c.flow.ri);
@@ -446,58 +458,58 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     ut2 = u.m[id4(i  ,j  ,k+2,2,u.size)];
                     if (b13) {
                         BB::pre(m13, uc0, ue1, ref, dis);
-                        ue1 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,0,u.bsize)]) - uc0;
+                        ue1 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,2,u.bsize)]) - uc0;
                     }
                     if (b23) {
                         BB::pre(m23, uc0, un1, ref, dis);
-                        un1 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,0,u.bsize)]) - uc0;
+                        un1 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,2,u.bsize)]) - uc0;
                     }
                     if (b33) {
                         BB::pre(m33, uc0, ut1, ref, dis);
-                        ut1 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,0,u.bsize)]) - uc0;
+                        ut1 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,2,u.bsize)]) - uc0;
                     }
                     if (b12) {
                         BB::pre(m12, uw1, uc0, ref, dis);
-                        uw1 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,0,u.bsize)]) - uc0;
+                        uw1 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,2,u.bsize)]) - uc0;
                     }
                     if (b22) {
                         BB::pre(m22, us1, uc0, ref, dis);
-                        us1 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,0,u.bsize)]) - uc0;
+                        us1 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,2,u.bsize)]) - uc0;
                     }
                     if (b32) {
                         BB::pre(m32, ub1, uc0, ref, dis);
-                        ub1 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,0,u.bsize)]) - uc0;
+                        ub1 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,2,u.bsize)]) - uc0;
                     }
                     if (b14) {
                         BB::pre(m14, ue1, ue2, ref, dis);
-                        ue2 = 2 * BB::eva(b14, ref, dis, u.b[id2(f14,0,u.bsize)]) - ue1;
+                        ue2 = 2 * BB::eva(b14, ref, dis, u.b[id2(f14,2,u.bsize)]) - ue1;
                     }
                     if (b24) {
                         BB::pre(m24, un1, un2, ref, dis);
-                        un2 = 2 * BB::eva(b24, ref, dis, u.b[id2(f24,0,u.bsize)]) - un1;
+                        un2 = 2 * BB::eva(b24, ref, dis, u.b[id2(f24,2,u.bsize)]) - un1;
                     }
                     if (b34) {
                         BB::pre(m34, ut1, ut2, ref, dis);
-                        ut2 = 2 * BB::eva(b34, ref, dis, u.b[id2(f34,0,u.bsize)]) - ut1;
+                        ut2 = 2 * BB::eva(b34, ref, dis, u.b[id2(f34,2,u.bsize)]) - ut1;
                     }
                     if (b11) {
                         BB::pre(m11, uw2, uw1, ref, dis);
-                        uw2 = 2 * BB::eva(b11, ref, dis, u.b[id2(f11,0,u.bsize)]) - uw1;
+                        uw2 = 2 * BB::eva(b11, ref, dis, u.b[id2(f11,2,u.bsize)]) - uw1;
                     }
                     if (b21) {
                         BB::pre(m21, us2, us1, ref, dis);
-                        us2 = 2 * BB::eva(b21, ref, dis, u.b[id2(f21,0,u.bsize)]) - us1;
+                        us2 = 2 * BB::eva(b21, ref, dis, u.b[id2(f21,2,u.bsize)]) - us1;
                     }
                     if (b31) {
                         BB::pre(m31, ub2, ub1, ref, dis);
-                        ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,0,u.bsize)]) - ub1;
+                        ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,2,u.bsize)]) - ub1;
                     }
                     ad3 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
                     vi3 = Scheme::viscosity(0, 0, 0, 0, 0, 0, mag, uc0, ue1, un1, ut1, uw1, us1, ub1, de1, dn1, dt1, dw1, ds1, db1, nc0, ne1, nn1, nt1, nw1, ns1, nb1, det, g1c, g2c, g3c, g1e, g2n, g3t, g1w, g2s, g3b, c.flow.ri);
 
-                    ua.m[id4(i,j,k,0,ua.size)] = u1 - c.time.dt * (-ad1 + vi1);
-                    ua.m[id4(i,j,k,1,ua.size)] = u2 - c.time.dt * (-ad2 + vi2);
-                    ua.m[id4(i,j,k,2,ua.size)] = u3 - c.time.dt * (-ad3 + vi3);
+                    ua.m[id4(i,j,k,0,ua.size)] = u1 + c.time.dt * (-ad1 + vi1);
+                    ua.m[id4(i,j,k,1,ua.size)] = u2 + c.time.dt * (-ad2 + vi2);
+                    ua.m[id4(i,j,k,2,ua.size)] = u3 + c.time.dt * (-ad3 + vi3);
                 }
             }
         }
@@ -558,12 +570,12 @@ void MMAC::correct_center_velocity(vector_field<real_t> &u, vector_field<real_t>
                     f23 = Util::ibsee(f23, Flag::Fn, Util::Mask8);
                     f32 = Util::ibsee(f32, Flag::Ft, Util::Mask8);
                     f33 = Util::ibsee(f33, Flag::Ft, Util::Mask8);
-                    b12 = p.bflag[f12];
-                    b13 = p.bflag[f13];
-                    b22 = p.bflag[f22];
-                    b23 = p.bflag[f23];
-                    b32 = p.bflag[f32];
-                    b33 = p.bflag[f33];
+                    b12 = Util::ibsee(p.bflag[f12], 0, Util::Mask8);
+                    b13 = Util::ibsee(p.bflag[f13], 0, Util::Mask8);
+                    b22 = Util::ibsee(p.bflag[f22], 0, Util::Mask8);
+                    b23 = Util::ibsee(p.bflag[f23], 0, Util::Mask8);
+                    b32 = Util::ibsee(p.bflag[f32], 0, Util::Mask8);
+                    b33 = Util::ibsee(p.bflag[f33], 0, Util::Mask8);
 
                     if (b13) {
                         BB::pre(m13, pc0, pe1, ref, dis);
@@ -623,73 +635,88 @@ void MMAC::correct_face_velocity(vector_field<real_t> &u, vector_field<real_t> &
                 double ref, dis;
                 ff = f.m[id3(i,j,k,f.size)];
 
-                m3 = Util::ibsee(ff, Flag::Me, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Fe, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i  ,j,k,0,u.size)];
-                    u1 = u.m[id4(i+1,j,k,0,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,0,u.bsize)]);
-                    kk = 1 /    (x.m[id4(i+1,j,k,0, x.size)] -  x.m[id4(i,j,k,0, x.size)]);
-                    uf = 0.5 * (ja.m[id3(i+1,j,k,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
-                } else {
-                    p0 = p.m[id3(i  ,j,k,  p.size)];
-                    p1 = p.m[id3(i+1,j,k,  p.size)];
-                    g0 = g.m[id4(i  ,j,k,0,g.size)];
-                    g1 = g.m[id4(i+1,j,k,0,g.size)];
-                    b3 = p.bflag[f3];
-                    if (b3) {
-                        BB::pre(m3, p0, p1, ref, dis);
-                        p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                if (j >= GUIDE && k >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Me, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Fe, Util::Mask8);
+                    if (!Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i  ,j,k,0,u.size)];
+                            u1 = u.m[id4(i+1,j,k,0,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,0,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i+1,j,k,0, x.size)] -  x.m[id4(i,j,k,0, x.size)]);
+                            uf = 0.5 * (ja.m[id3(i+1,j,k,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
+                        } else {
+                            p0 = p.m[id3(i  ,j,k,  p.size)];
+                            p1 = p.m[id3(i+1,j,k,  p.size)];
+                            g0 = g.m[id4(i  ,j,k,0,g.size)];
+                            g1 = g.m[id4(i+1,j,k,0,g.size)];
+                            b3 = Util::ibsee(p.bflag[f3], 0, Util::Mask8);
+                            if (b3) {
+                                BB::pre(m3, p0, p1, ref, dis);
+                                p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                            }
+                            uf = uua.m[id4(i,j,k,0,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
+                        }
+                        uu.m[id4(i,j,k,0,uua.size)] = uf;
                     }
-                    uf = uua.m[id4(i,j,k,0,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
                 }
 
-                m3 = Util::ibsee(ff, Flag::Mn, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Fn, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i,j  ,k,1,u.size)];
-                    u1 = u.m[id4(i,j+1,k,1,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,1,u.bsize)]);
-                    kk = 1 /    (x.m[id4(i,j+1,k,1, x.size)] -  x.m[id4(i,j,k,1, x.size)]);
-                    uf = 0.5 * (ja.m[id3(i,j+1,k,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
-                } else {
-                    p0 = p.m[id3(i,j  ,k,  p.size)];
-                    p1 = p.m[id3(i,j+1,k,  p.size)];
-                    g0 = g.m[id4(i,j  ,k,1,g.size)];
-                    g1 = g.m[id4(i,j+1,k,1,g.size)];
-                    b3 = p.bflag[f3];
-                    if (b3) {
-                        BB::pre(m3, p0, p1, ref, dis);
-                        p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                if (i >= GUIDE && k >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Mn, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Fn, Util::Mask8);
+                    if (!Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i,j  ,k,1,u.size)];
+                            u1 = u.m[id4(i,j+1,k,1,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,1,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i,j+1,k,1, x.size)] -  x.m[id4(i,j,k,1, x.size)]);
+                            uf = 0.5 * (ja.m[id3(i,j+1,k,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
+                        } else {
+                            p0 = p.m[id3(i,j  ,k,  p.size)];
+                            p1 = p.m[id3(i,j+1,k,  p.size)];
+                            g0 = g.m[id4(i,j  ,k,1,g.size)];
+                            g1 = g.m[id4(i,j+1,k,1,g.size)];
+                            b3 = Util::ibsee(p.bflag[f3], 0, Util::Mask8);
+                            if (b3) {
+                                BB::pre(m3, p0, p1, ref, dis);
+                                p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                            }
+                            uf = uua.m[id4(i,j,k,1,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
+                        }
+                        uu.m[id4(i,j,k,1,uua.size)] = uf;
                     }
-                    uf = uua.m[id4(i,j,k,1,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
                 }
 
-                m3 = Util::ibsee(ff, Flag::Mt, Util::Mask1);
-                f3 = Util::ibsee(ff, Flag::Ft, Util::Mask8);
-                b3 = u.bflag[f3];
-                if (b3) {
-                    u0 = u.m[id4(i,j,k  ,2,u.size)];
-                    u1 = u.m[id4(i,j,k+1,2,u.size)];
-                    BB::pre(m3, u0, u1, ref, dis);
-                    uf = BB::eva(b3, ref, dis, u.b[id2(f3,2,u.bsize)]);
-                    kk = 1 /    (x.m[id4(i,j,k+1,2, x.size)] -  x.m[id4(i,j,k,2, x.size)]);
-                    uf = 0.5 * (ja.m[id3(i,j,k+1,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
-                } else {
-                    p0 = p.m[id3(i,j,k  ,  p.size)];
-                    p1 = p.m[id3(i,j,k+1,  p.size)];
-                    g0 = g.m[id4(i,j,k  ,2,g.size)];
-                    g1 = g.m[id4(i,j,k+1,2,g.size)];
-                    b3 = p.bflag[f3];
-                    if (b3) {
-                        BB::pre(m3, p0, p1, ref, dis);
-                        p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                if (i >= GUIDE && j >= GUIDE) {
+                    m3 = Util::ibsee(ff, Flag::Mt, Util::Mask1);
+                    f3 = Util::ibsee(ff, Flag::Ft, Util::Mask8);
+                    if (!Util::ibsee(u.bflag[f3], BB::uu_locked, Util::Mask1)) {
+                        b3 = Util::ibsee(u.bflag[f3], 0, Util::Mask8);
+                        if (b3) {
+                            u0 = u.m[id4(i,j,k  ,2,u.size)];
+                            u1 = u.m[id4(i,j,k+1,2,u.size)];
+                            BB::pre(m3, u0, u1, ref, dis);
+                            uf = BB::eva(b3, ref, dis, u.b[id2(f3,2,u.bsize)]);
+                            kk = 1 /    (x.m[id4(i,j,k+1,2, x.size)] -  x.m[id4(i,j,k,2, x.size)]);
+                            uf = 0.5 * (ja.m[id3(i,j,k+1,  ja.size)] + ja.m[id3(i,j,k,  ja.size)]) * kk * uf;
+                        } else {
+                            p0 = p.m[id3(i,j,k  ,  p.size)];
+                            p1 = p.m[id3(i,j,k+1,  p.size)];
+                            g0 = g.m[id4(i,j,k  ,2,g.size)];
+                            g1 = g.m[id4(i,j,k+1,2,g.size)];
+                            b3 = Util::ibsee(p.bflag[f3], 0, Util::Mask8);
+                            if (b3) {
+                                BB::pre(m3, p0, p1, ref, dis);
+                                p1 = 2 * BB::eva(b3, ref, dis, p.b[f3]) - p0;
+                            }
+                            uf = uua.m[id4(i,j,k,2,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
+                        }
+                        uu.m[id4(i,j,k,2,uua.size)] = uf;
                     }
-                    uf = uua.m[id4(i,j,k,2,uua.size)] - c.time.dt * 0.5 * (g0 + g1) * (p1 - p0);
                 }
             }
         }

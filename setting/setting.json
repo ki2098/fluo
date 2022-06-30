@@ -1,27 +1,41 @@
 {
-    "domain":[200, 200, 1],
+    "domain":[400, 200, 1],
     "boundary":[
         {
-            "label":"moving_wall",
+            "label":"inlet",
             "u":{"type":"fixedValue", "value":[1.0, 0.0, 0.0]},
             "p":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"outer", "face":"y+"}
+            "topo":{"io":"outer", "face":"x-"}
         },
         {
-            "label":"fixed_wall",
-            "u":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
+            "label":"outlet",
+            "u":{"type":"outflow"},
             "p":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"outer", "face":["y-","x-","x+"]}
+            "outflow":1.0,
+            "topo":{"io":"outer", "face":"x+"}
+        },
+        {
+            "label":"side",
+            "u":{"type":"symmetric"},
+            "p":{"type":"symmetric"},
+            "topo":{"io":"outer", "face":["y-", "y+"]}
         },
         {
             "label":"front_back",
-            "u":{"type":"symmetric"},
-            "p":{"type":"symmetric"},
+            "u":{"type":"cyclic"},
+            "p":{"type":"cyclic"},
             "topo":{"io":"outer", "face":["z-","z+"]}
+        },
+        {
+            "label":"square",
+            "u":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
+            "p":{"type":"fixedGradient", "value":0.0},
+            "topo":{"io":"inner", "shape":"cuboid", "position":[[100, 90, 0], [119, 109, 0]]}
         }
     ],
-    "init":{"u":[0.0, 0.0, 0.0], "p":0.0},
-    "time":{"dt":5e-3, "t":100.0},
-    "flow":{"re":5000, "tdiv":1e-2, "scheme":"muscl", "maxit":1000},
-    "poisson":{"solver":"jacobi", "e":1e-4, "maxit":1000}
+    "init":{"u":[1.0, 0.0, 0.0], "p":0.0},
+    "time":{"dt":1e-3, "t":100.0},
+    "flow":{"re":1500, "tdiv":1e-4, "scheme":"muscl", "maxit":1000},
+    "poisson":{"solver":"sor", "omega":1.2, "e":1e-6, "maxit":1000},
+    "monitor":{"t":1.0}
 }

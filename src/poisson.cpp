@@ -76,12 +76,12 @@ void Poisson::sor(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &dom) 
                         f23 = Util::ibsee(f23, Flag::Fn, Util::Mask8);
                         f32 = Util::ibsee(f32, Flag::Ft, Util::Mask8);
                         f33 = Util::ibsee(f33, Flag::Ft, Util::Mask8);
-                        b12 = p.bflag[f12];
-                        b13 = p.bflag[f13];
-                        b22 = p.bflag[f22];
-                        b23 = p.bflag[f23];
-                        b32 = p.bflag[f32];
-                        b33 = p.bflag[f33];
+                        b12 = Util::ibsee(p.bflag[f12], 0, Util::Mask8);
+                        b13 = Util::ibsee(p.bflag[f13], 0, Util::Mask8);
+                        b22 = Util::ibsee(p.bflag[f22], 0, Util::Mask8);
+                        b23 = Util::ibsee(p.bflag[f23], 0, Util::Mask8);
+                        b32 = Util::ibsee(p.bflag[f32], 0, Util::Mask8);
+                        b33 = Util::ibsee(p.bflag[f33], 0, Util::Mask8);
                         if (b13) {
                             BB::pre(m13, pc0, pe1, ref, dis);
                             pe1 = 2 * BB::eva(b13, ref, dis, p.b[f13]) - pc0;
@@ -187,12 +187,12 @@ void Poisson::sor(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &dom) 
                         f23 = Util::ibsee(f23, Flag::Fn, Util::Mask8);
                         f32 = Util::ibsee(f32, Flag::Ft, Util::Mask8);
                         f33 = Util::ibsee(f33, Flag::Ft, Util::Mask8);
-                        b12 = p.bflag[f12];
-                        b13 = p.bflag[f13];
-                        b22 = p.bflag[f22];
-                        b23 = p.bflag[f23];
-                        b32 = p.bflag[f32];
-                        b33 = p.bflag[f33];
+                        b12 = Util::ibsee(p.bflag[f12], 0, Util::Mask8);
+                        b13 = Util::ibsee(p.bflag[f13], 0, Util::Mask8);
+                        b22 = Util::ibsee(p.bflag[f22], 0, Util::Mask8);
+                        b23 = Util::ibsee(p.bflag[f23], 0, Util::Mask8);
+                        b32 = Util::ibsee(p.bflag[f32], 0, Util::Mask8);
+                        b33 = Util::ibsee(p.bflag[f33], 0, Util::Mask8);
                         if (b13) {
                             BB::pre(m13, pc0, pe1, ref, dis);
                             pe1 = 2 * BB::eva(b13, ref, dis, p.b[f13]) - pc0;
@@ -238,7 +238,7 @@ void Poisson::sor(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &dom) 
         c.poisson.res = sqrt(err / cnt);
 
         BB::scalar_outer(p, dom);
-    } while (c.poisson.res > c.poisson.epsilon  && ++c.poisson.it < c.poisson.maxit);
+    } while (++c.poisson.it < c.poisson.maxit && c.poisson.res > c.poisson.epsilon);
 }
 
 void Poisson::jacobi(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &dom) {
@@ -252,9 +252,9 @@ void Poisson::jacobi(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &do
     c.poisson.it = 0;
     do {
         #pragma acc kernels loop independent collapse(3) present(this[0:1], p, pd)
-        for (int i = GUIDE; i < p.size[0] - GUIDE; i ++) {
-            for (int j = GUIDE; j < p.size[1] - GUIDE; j ++) {
-                for (int k = GUIDE; k < p.size[2] - GUIDE; k++) {
+        for (int i = 0; i < p.size[0]; i ++) {
+            for (int j = 0; j < p.size[1]; j ++) {
+                for (int k = 0; k < p.size[2]; k++) {
                     pd.m[id3(i,j,k,pd.size)] = p.m[id3(i,j,k,p.size)];
                 }
             }
@@ -322,12 +322,12 @@ void Poisson::jacobi(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &do
                         f23 = Util::ibsee(f23, Flag::Fn, Util::Mask8);
                         f32 = Util::ibsee(f32, Flag::Ft, Util::Mask8);
                         f33 = Util::ibsee(f33, Flag::Ft, Util::Mask8);
-                        b12 = pd.bflag[f12];
-                        b13 = pd.bflag[f13];
-                        b22 = pd.bflag[f22];
-                        b23 = pd.bflag[f23];
-                        b32 = pd.bflag[f32];
-                        b33 = pd.bflag[f33];
+                        b12 = Util::ibsee(pd.bflag[f12], 0, Util::Mask8);
+                        b13 = Util::ibsee(pd.bflag[f13], 0, Util::Mask8);
+                        b22 = Util::ibsee(pd.bflag[f22], 0, Util::Mask8);
+                        b23 = Util::ibsee(pd.bflag[f23], 0, Util::Mask8);
+                        b32 = Util::ibsee(pd.bflag[f32], 0, Util::Mask8);
+                        b33 = Util::ibsee(pd.bflag[f33], 0, Util::Mask8);
                         if (b13) {
                             BB::pre(m13, pc0, pe1, ref, dis);
                             pe1 = 2 * BB::eva(b13, ref, dis, pd.b[f13]) - pc0;
@@ -364,7 +364,7 @@ void Poisson::jacobi(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &do
                         rc0 = (rhs - ae1 * pe1 - an1 * pn1 - at1 * pt1 - aw1 * pw1 - as1 * ps1 - ab1 * pb1) / ac0 - pc0;
                         err = err + rc0 * rc0;
     
-                        p.m[id3(i,j,k,p.size)] = pc0 + c.poisson.omega * rc0;
+                        p.m[id3(i,j,k,p.size)] = pc0 + rc0;
                         cnt += 1;
                     }
                 }
@@ -373,5 +373,5 @@ void Poisson::jacobi(scalar_field<real_t> &p, scalar_field<real_t> &div, Dom &do
         c.poisson.res = sqrt(err / cnt);
 
         BB::scalar_outer(p, dom);
-    } while (c.poisson.res > c.poisson.epsilon  && ++c.poisson.it < c.poisson.maxit);
+    } while (++c.poisson.it < c.poisson.maxit && c.poisson.res > c.poisson.epsilon);
 }
