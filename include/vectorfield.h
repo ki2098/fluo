@@ -25,6 +25,8 @@ public:
 public:
     void init(int *field, int dim, int n);
     void init(vector_field<T> &field);
+    void copy(vector_field<T> &field);
+    void clear();
 public:
     void to_device() {
         #pragma acc enter data copyin(this[0:1], m[0:len], b[0:blen], bflag[0:bcount])
@@ -119,6 +121,32 @@ template<class T> void vector_field<T>::init(vector_field<T> &field) {
         }
         
         inited    = true;
+    }
+}
+
+template<class T> void vector_field<T>::copy(vector_field<T> &field) {
+    #pragma acc kernels loop independent collapse(3) present(this[0:1], field)
+    for (int i = 0; i < field.size[0]; i ++) {
+        for (int j = 0; j < field.size[1]; j ++) {
+            for (int k = 0; k < field.size[2]; k ++) {
+                for (int l = 0; l < field.size[3]; l ++) {
+                    m[id4(i,j,k,l,size)] = field.m[id4(i,j,k,l,field.size)];
+                }
+            }
+        }
+    }
+}
+
+template<class T> void vector_field<T>::clear() {
+    #pragma acc kernels loop independent collapse(3) present(this[0:1])
+    for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+            for (int k = 0; k < size[2]; k ++) {
+                for (int l = 0; l < size[3]; l ++) {
+                    m[id4(i,j,k,l,size)] = 0;
+                }
+            }
+        }
     }
 }
 

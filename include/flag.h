@@ -1,7 +1,7 @@
 #ifndef _FLAG_H
 #define _FLAG_H 1
 
-class Flag{
+class Cell{
 public:
 
 static const unsigned int Active = 0U;

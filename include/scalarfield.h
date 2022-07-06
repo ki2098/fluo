@@ -24,6 +24,8 @@ public:
 public:
     void init(int *field, int n);
     void init(scalar_field<T> &field);
+    void copy(scalar_field<T> &field);
+    void clear();
 public:
     void to_device() {
         #pragma acc enter data copyin(this[0:1], m[0:len], b[0:blen], bflag[0:bcount])
@@ -109,6 +111,28 @@ template<class T> void scalar_field<T>::init(scalar_field<T> &field) {
         }
         
         inited    = true;
+    }
+}
+
+template<class T> void scalar_field<T>::copy(scalar_field<T> &field) {
+    #pragma acc kernels loop independent collapse(3) present(this[0:1], field)
+    for (int i = 0; i < field.size[0]; i ++) {
+        for (int j = 0; j < field.size[1]; j ++) {
+            for (int k = 0; k < field.size[2]; k ++) {
+                m[id3(i,j,k,size)] = field.m[id3(i,j,k,field.size)];
+            }
+        }
+    }
+}
+
+template<class T> void scalar_field<T>::clear() {
+    #pragma acc kernels loop independent collapse(3) present(this[0:1])
+    for (int i = 0; i < size[0]; i ++) {
+        for (int j = 0; j < size[1]; j ++) {
+            for (int k = 0; k < size[2]; k ++) {
+                m[id3(i,j,k,size)] = 0;
+            }
+        }
     }
 }
 

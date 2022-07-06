@@ -18,6 +18,7 @@ public:
     static const unsigned dirichlet   = 0U;
     static const unsigned neumann     = 1U;
     static const unsigned uu_locked   = 8U;
+    static const unsigned wall_func   = 9U;
 public:
     static void pre(unsigned m, real_t _0, real_t _1, real_t &ref, real_t &dis) {
         ref = (m)? _1 : _0;
@@ -31,9 +32,34 @@ public:
         }
         return 0.0;
     }
+    static void disable_driver(scalar_field<real_t> &field) {
+        for (int i = 0; i < 6; i ++) {
+            if (Util::ibsee(field.obflag[i], BB::directional, Util::Mask1)) {
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::directional, Util::Mask1, 0U);
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::cyclic, Util::Mask1, 1U);
+            }
+            if (Util::ibsee(field.obflag[i], BB::driver, Util::Mask1)) {
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::driver, Util::Mask1, 0U);
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::semicyclic, Util::Mask1, 1U);
+            }
+        }
+    }
+    static void disable_driver(vector_field<real_t> &field) {
+        for (int i = 0; i < 6; i ++) {
+            if (Util::ibsee(field.obflag[i], BB::directional, Util::Mask1)) {
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::directional, Util::Mask1, 0U);
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::cyclic, Util::Mask1, 1U);
+            }
+            if (Util::ibsee(field.obflag[i], BB::driver, Util::Mask1)) {
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::driver, Util::Mask1, 0U);
+                field.obflag[i] = Util::ibset(field.obflag[i], BB::semicyclic, Util::Mask1, 1U);
+            }
+        }
+    }
 public:
     static void scalar_outer(scalar_field<real_t> &fld, Dom &dom);
     static void vector_outer(vector_field<real_t> &fld, Dom &dom);
+    static void scalar_outflow(scalar_field<real_t> &fld, Dom &dom);
     static void vector_outflow(vector_field<real_t> &fld, Dom &dom);
     static void velocity_outflow_correction(Dom &dom);
     static void calc_u_ob(Dom &dom);

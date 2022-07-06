@@ -16,9 +16,10 @@ public:
     public:
         enum class Type {jacobi, sor, bicgstab, pbicgstab};
         Ctrl::LS::Type type;
+        Ctrl::LS::Type subtype;
         real_t omega;
         real_t epsilon;
-        real_t res;
+        real_t err;
         int    maxit;
         int    it;
     };
@@ -53,6 +54,7 @@ public:
         Ctrl::Driver::Var var;
         real_t value;
         real_t dp;
+        real_t u_observed;
         int inflow;
         int length;
     };
@@ -64,13 +66,22 @@ public:
         real_t cs;
     };
 
+    struct Statistics {
+    public:
+        enum class Type {off, on};
+        Ctrl::Statistics::Type type;
+        real_t avg_from;
+        int avg_steps;
+    };
+
 public:
-    Ctrl::Time time;
-    Ctrl::LS poisson;
-    Ctrl::Flow flow;
-    Ctrl::Monitor monitor;
-    Ctrl::Driver driver[3];
+    Ctrl::Time       time;
+    Ctrl::LS         poisson;
+    Ctrl::Flow       flow;
+    Ctrl::Monitor    monitor;
+    Ctrl::Driver     driver[3];
     Ctrl::Turbulence turbulence;
+    Ctrl::Statistics statistics;
 public:
     Ctrl() {
         monitor.type     = Ctrl::Monitor::Type::off;
@@ -78,6 +89,7 @@ public:
         driver[1].type   = Ctrl::Driver::Type::off;
         driver[2].type   = Ctrl::Driver::Type::off;
         turbulence.model = Ctrl::Turbulence::Model::off;
+        statistics.type  = Ctrl::Statistics::Type::off;
     }
     void to_device() {
         #pragma acc enter data copyin(this[0:1])

@@ -17,6 +17,9 @@ public:
         enum class Type {off, average, minmax, designated};
         Type   type[6];
         real_t value[6];
+        UOB() {
+            type[0] = type[1] = type[2] = type[3] = type[4] = type[5] = Type::off;
+        }
     } uob;
 public:
     scalar_field<unsigned> f;
@@ -30,12 +33,15 @@ public:
     vector_field<real_t>   g;
     scalar_field<real_t>   ja;
     vector_field<real_t>   sz;
+    vector_field<real_t>   u_avg;
+    scalar_field<real_t>   p_avg;
 public:
     const char *name;
 public:
     Dom(const char *label);
     void init(int *field, int nbound);
     void driver();
+    void driver_monitor();
     void pressure_zero_average();
     void tick() {c.time.idt ++;}
 public:
