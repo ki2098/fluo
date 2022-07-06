@@ -530,6 +530,108 @@ void BB::vector_outer(vector_field<real_t> &fld, Dom &dom) {
     }
 }
 
+void BB::scalar_outflow(scalar_field<real_t> &fld, Dom &dom) {
+    Ctrl                 &c = dom.c;
+    vector_field<real_t> &x = dom.x;
+
+    /* the x- face */
+    if (Util::ibsee(fld.obflag[0], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int j = GUIDE; j < fld.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < fld.size[2] - GUIDE; k ++) {
+                real_t fd3 = fld.m[id3(GUIDE  ,j,k,  fld.size)];
+                real_t fd2 = fld.m[id3(GUIDE-1,j,k,  fld.size)];
+                real_t fd1 = fld.m[id3(GUIDE-2,j,k,  fld.size)];
+                real_t  x3 =   x.m[id4(GUIDE  ,j,k,0,  x.size)];
+                real_t  x2 =   x.m[id4(GUIDE-1,j,k,0,  x.size)];
+                real_t  x1 =   x.m[id4(GUIDE-2,j,k,0,  x.size)];
+                fld.m[id3(GUIDE-1,j,k,fld.size)] -= c.time.dt * dom.uob.value[0] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(GUIDE-2,j,k,fld.size)] -= c.time.dt * dom.uob.value[0] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+    /* the x+ face */
+    if (Util::ibsee(fld.obflag[1], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int j = GUIDE; j < fld.size[1] - GUIDE; j ++) {
+            for (int k = GUIDE; k < fld.size[2] - GUIDE; k ++) {
+                real_t fd3 = fld.m[id3(fld.size[0]-GUIDE+1,j,k,  fld.size)];
+                real_t fd2 = fld.m[id3(fld.size[0]-GUIDE  ,j,k,  fld.size)];
+                real_t fd1 = fld.m[id3(fld.size[0]-GUIDE-1,j,k,  fld.size)];
+                real_t  x3 =   x.m[id4(fld.size[0]-GUIDE+1,j,k,0,  x.size)];
+                real_t  x2 =   x.m[id4(fld.size[0]-GUIDE  ,j,k,0,  x.size)];
+                real_t  x1 =   x.m[id4(fld.size[0]-GUIDE-1,j,k,0,  x.size)];
+                fld.m[id3(fld.size[0]-GUIDE+1,j,k,fld.size)] -= c.time.dt * dom.uob.value[1] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(fld.size[0]-GUIDE  ,j,k,fld.size)] -= c.time.dt * dom.uob.value[1] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+    /* the y- face */
+    if (Util::ibsee(fld.obflag[2], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int i = GUIDE; i < fld.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < fld.size[2] - GUIDE; k ++) {
+                real_t fd3 = fld.m[id3(i,GUIDE  ,k,  fld.size)];
+                real_t fd2 = fld.m[id3(i,GUIDE-1,k,  fld.size)];
+                real_t fd1 = fld.m[id3(i,GUIDE-2,k,  fld.size)];
+                real_t  x3 =   x.m[id4(i,GUIDE  ,k,1,  x.size)];
+                real_t  x2 =   x.m[id4(i,GUIDE-1,k,1,  x.size)];
+                real_t  x1 =   x.m[id4(i,GUIDE-2,k,1,  x.size)];
+                fld.m[id3(i,GUIDE-1,k,fld.size)] -= c.time.dt * dom.uob.value[2] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(i,GUIDE-2,k,fld.size)] -= c.time.dt * dom.uob.value[2] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+    /* the y+ face */
+    if (Util::ibsee(fld.obflag[3], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int i = GUIDE; i < fld.size[0] - GUIDE; i ++) {
+            for (int k = GUIDE; k < fld.size[2] - GUIDE; k ++) {
+                real_t fd3 = fld.m[id3(i,fld.size[1]-GUIDE+1,k,  fld.size)];
+                real_t fd2 = fld.m[id3(i,fld.size[1]-GUIDE  ,k,  fld.size)];
+                real_t fd1 = fld.m[id3(i,fld.size[1]-GUIDE-1,k,  fld.size)];
+                real_t  x3 =   x.m[id4(i,fld.size[1]-GUIDE+1,k,1,  x.size)];
+                real_t  x2 =   x.m[id4(i,fld.size[1]-GUIDE  ,k,1,  x.size)];
+                real_t  x1 =   x.m[id4(i,fld.size[1]-GUIDE-1,k,1,  x.size)];
+                fld.m[id3(i,fld.size[1]-GUIDE+1,k,fld.size)] -= c.time.dt * dom.uob.value[3] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(i,fld.size[1]-GUIDE  ,k,fld.size)] -= c.time.dt * dom.uob.value[3] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+    /* the z- face */
+    if (Util::ibsee(fld.obflag[4], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int i = GUIDE; i < fld.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < fld.size[1] - GUIDE; j ++) {
+                real_t fd3 = fld.m[id3(i,j,GUIDE  ,  fld.size)];
+                real_t fd2 = fld.m[id3(i,j,GUIDE-1,  fld.size)];
+                real_t fd1 = fld.m[id3(i,j,GUIDE-2,  fld.size)];
+                real_t  x3 =   x.m[id4(i,j,GUIDE  ,2,  x.size)];
+                real_t  x2 =   x.m[id4(i,j,GUIDE-1,2,  x.size)];
+                real_t  x1 =   x.m[id4(i,j,GUIDE-2,2,  x.size)];
+                fld.m[id3(i,j,GUIDE-1,fld.size)] -= c.time.dt * dom.uob.value[4] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(i,j,GUIDE-2,fld.size)] -= c.time.dt * dom.uob.value[4] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+    /* the z+ face */
+    if (Util::ibsee(fld.obflag[5], BB::outflow, Util::Mask1)) {
+        #pragma acc kernels loop independent collapse(2) present(fld, c, x, dom)
+        for (int i = GUIDE; i < fld.size[0] - GUIDE; i ++) {
+            for (int j = GUIDE; j < fld.size[1] - GUIDE; j ++) {
+                real_t fd3 = fld.m[id3(i,j,fld.size[2]-GUIDE+1,  fld.size)];
+                real_t fd2 = fld.m[id3(i,j,fld.size[2]-GUIDE  ,  fld.size)];
+                real_t fd1 = fld.m[id3(i,j,fld.size[2]-GUIDE-1,  fld.size)];
+                real_t  x3 =   x.m[id4(i,j,fld.size[2]-GUIDE+1,2,  x.size)];
+                real_t  x2 =   x.m[id4(i,j,fld.size[2]-GUIDE  ,2,  x.size)];
+                real_t  x1 =   x.m[id4(i,j,fld.size[2]-GUIDE-1,2,  x.size)];
+                fld.m[id3(i,j,fld.size[2]-GUIDE+1,fld.size)] -= c.time.dt * dom.uob.value[5] * (fd3 - fd2) / (x3 - x2);
+                fld.m[id3(i,j,fld.size[2]-GUIDE  ,fld.size)] -= c.time.dt * dom.uob.value[5] * (fd2 - fd1) / (x2 - x1);
+            }
+        }
+    }
+}
+
 void BB::vector_outflow(vector_field<real_t> &fld, Dom &dom) {
     Ctrl                 &c = dom.c;
     vector_field<real_t> &x = dom.x;
@@ -552,7 +654,6 @@ void BB::vector_outflow(vector_field<real_t> &fld, Dom &dom) {
             }
         }
     }
-
     /* the x+ face */
     if (Util::ibsee(fld.obflag[1], BB::outflow, Util::Mask1)) {
         #pragma acc kernels loop independent collapse(3) present(fld, c, x, dom)
@@ -589,7 +690,6 @@ void BB::vector_outflow(vector_field<real_t> &fld, Dom &dom) {
             }
         }
     }
-
     /* the y+ face */
     if (Util::ibsee(fld.obflag[3], BB::outflow, Util::Mask1)) {
         #pragma acc kernels loop independent collapse(3) present(fld, c, x, dom)
@@ -608,7 +708,6 @@ void BB::vector_outflow(vector_field<real_t> &fld, Dom &dom) {
             }
         }
     }
-
     /* the z- face */
     if (Util::ibsee(fld.obflag[4], BB::outflow, Util::Mask1)) {
         #pragma acc kernels loop independent collapse(3) present(fld, c, x, dom)
@@ -627,7 +726,6 @@ void BB::vector_outflow(vector_field<real_t> &fld, Dom &dom) {
             }
         }
     }
-
     /* the z+ face */
     if (Util::ibsee(fld.obflag[5], BB::outflow, Util::Mask1)) {
         #pragma acc kernels loop independent collapse(3) present(fld, c, x, dom)

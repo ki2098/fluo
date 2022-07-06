@@ -3,6 +3,46 @@
 #include "../include/boundary.h"
 #include "../include/flag.h"
 
+void FLUO::time_sum() {
+    Dom                  &dom   = domain;
+    scalar_field<real_t> &p_avg = dom.p_avg;
+    scalar_field<real_t> &p     = dom.p;
+    vector_field<real_t> &u_avg = dom.u_avg;
+    vector_field<real_t> &u     = dom.u;
+    Ctrl                 &c     = dom.c;
+    #pragma acc kernels loop independent collapse(3) present(p_avg, p, u_avg, u, dom)
+    for (int i = 0; i < dom.size[0]; i ++) {
+        for (int j = 0; j < dom.size[1]; j ++) {
+            for (int k = 0; k < dom.size[2]; k ++) {
+                p_avg.m[id3(i,j,k,  p_avg.size)] += p.m[id3(i,j,k,  p.size)];
+                u_avg.m[id4(i,j,k,0,u_avg.size)] += u.m[id4(i,j,k,0,u.size)];
+                u_avg.m[id4(i,j,k,1,u_avg.size)] += u.m[id4(i,j,k,1,u.size)];
+                u_avg.m[id4(i,j,k,2,u_avg.size)] += u.m[id4(i,j,k,2,u.size)];
+            }
+        }
+    }
+    c.statistics.avg_steps += 1;
+}
+
+void FLUO::time_average() {
+    Dom                  &dom   = domain;
+    scalar_field<real_t> &p_avg = dom.p_avg;
+    vector_field<real_t> &u_avg = dom.u_avg;
+    Ctrl                 &c     = dom.c;
+    #pragma acc update device(c.statistics.avg_steps)
+    #pragma acc kernels loop independent collapse(3) present(p_avg, u_avg, c, dom)
+    for (int i = 0; i < dom.size[0]; i ++) {
+        for (int j = 0; j < dom.size[1]; j ++) {
+            for (int k = 0; k < dom.size[2]; k ++) {
+                p_avg.m[id3(i,j,k,  p_avg.size)] /= c.statistics.avg_steps;
+                u_avg.m[id4(i,j,k,0,u_avg.size)] /= c.statistics.avg_steps;
+                u_avg.m[id4(i,j,k,1,u_avg.size)] /= c.statistics.avg_steps;
+                u_avg.m[id4(i,j,k,2,u_avg.size)] /= c.statistics.avg_steps;
+            }
+        }
+    }
+}
+
 void FLUO::show_info() {
     Ctrl &c = domain.c;
 
@@ -14,6 +54,9 @@ void FLUO::show_info() {
         printf("\t\tu   %u (%lf %lf %lf)", Util::ibsee(domain.u.bflag[i], 0, Util::Mask8), domain.u.b[id2(i,0,domain.u.bsize)], domain.u.b[id2(i,1,domain.u.bsize)], domain.u.b[id2(i,2,domain.u.bsize)]);
         if (Util::ibsee(domain.u.bflag[i], BB::uu_locked, Util::Mask1)) {
             printf(" uu locked");
+        }
+        if (Util::ibsee(domain.u.bflag[i], BB::wall_func, Util::Mask1)) {
+            printf(" wall function");
         }
         printf("\n");
         printf("\t\tp   %u %lf\n", Util::ibsee(domain.p.bflag[i], 0, Util::Mask8), domain.p.b[i]);
@@ -82,10 +125,26 @@ void FLUO::show_info() {
         }
     }
     
+    printf("Turbulence:\n");
+    if (c.turbulence.model == Ctrl::Turbulence::Model::off) {
+        printf("\toff\n");
+    } else if (c.turbulence.model == Ctrl::Turbulence::Model::smagorinsky) {
+        printf("\tsmagorinsky %.2lf\n", c.turbulence.cs);
+    } else if (c.turbulence.model == Ctrl::Turbulence::Model::csm) {
+        printf("\tcsm\n");
+    }
+
     printf("Time:\n");
     printf("\tdt %.2e", c.time.dt);
     printf("\ttarget t %lf\n", c.time.dt * c.time.ndt);
     printf("\ttarget number of dt %d\n", c.time.ndt);
+
+    printf("Time average:\n");
+    if (c.statistics.type == Ctrl::Statistics::Type::off) {
+        printf("\toff\n");
+    } else {
+        printf("\taverage from %.1lf\n", c.statistics.avg_from);
+    }
 }
 
 void FLUO::param_out() {
@@ -99,13 +158,13 @@ void FLUO::param_out() {
             for (int j = 0; j < domain.size[1]; j ++) {
                 for (int i = 0; i < domain.size[0]; i ++) {
                     unsigned flag  = domain.f.m[id3(i,j,k,domain.f.size)];
-                    unsigned active = Util::ibsee(flag, Flag::Active, Util::Mask1);
-                    unsigned fe = Util::ibsee(flag, Flag::Fe, Util::Mask8);
-                    unsigned fn = Util::ibsee(flag, Flag::Fn, Util::Mask8);
-                    unsigned ft = Util::ibsee(flag, Flag::Ft, Util::Mask8);
-                    unsigned me = Util::ibsee(flag, Flag::Me, Util::Mask1);
-                    unsigned mn = Util::ibsee(flag, Flag::Mn, Util::Mask1);
-                    unsigned mt = Util::ibsee(flag, Flag::Mt, Util::Mask1);
+                    unsigned active = Util::ibsee(flag, Cell::Active, Util::Mask1);
+                    unsigned fe = Util::ibsee(flag, Cell::Fe, Util::Mask8);
+                    unsigned fn = Util::ibsee(flag, Cell::Fn, Util::Mask8);
+                    unsigned ft = Util::ibsee(flag, Cell::Ft, Util::Mask8);
+                    unsigned me = Util::ibsee(flag, Cell::Me, Util::Mask1);
+                    unsigned mn = Util::ibsee(flag, Cell::Mn, Util::Mask1);
+                    unsigned mt = Util::ibsee(flag, Cell::Mt, Util::Mask1);
                     real_t   x1 =  domain.x.m[id4(i,j,k,0, domain.x.size)];
                     real_t   x2 =  domain.x.m[id4(i,j,k,1, domain.x.size)];
                     real_t   x3 =  domain.x.m[id4(i,j,k,2, domain.x.size)];
@@ -130,7 +189,6 @@ void FLUO::param_out() {
 void FLUO::var_out(const char* fname) {
     domain.x.update_self();
     domain.u.update_self();
-    domain.uu.update_self();
     domain.nut.update_self();
     domain.div.update_self();
     mmac.diva.update_self();
@@ -140,9 +198,8 @@ void FLUO::var_out(const char* fname) {
     if (fo == NULL) {
         printf("\nERROR when opening file\n");
         fflush(stdout);
-    }
-    else {
-        fprintf(fo, "x,y,z,u,v,w,uu,vv,ww,p,nue,dvr,dva\n");
+    } else {
+        fprintf(fo, "x,y,z,u,v,w,p,nue,dvr,dva\n");
         for (int k = 0; k < domain.size[2]; k ++) {
             for (int j = 0; j < domain.size[1]; j ++) {
                 for (int i = 0; i < domain.size[0]; i ++) {
@@ -152,14 +209,40 @@ void FLUO::var_out(const char* fname) {
                     real_t   u1 =   domain.u.m[id4(i,j,k,0,  domain.u.size)];
                     real_t   u2 =   domain.u.m[id4(i,j,k,1,  domain.u.size)];
                     real_t   u3 =   domain.u.m[id4(i,j,k,2,  domain.u.size)];
-                    real_t  uu1 =  domain.uu.m[id4(i,j,k,0, domain.uu.size)];
-                    real_t  uu2 =  domain.uu.m[id4(i,j,k,1, domain.uu.size)];
-                    real_t  uu3 =  domain.uu.m[id4(i,j,k,2, domain.uu.size)];
                     real_t  nut = domain.nut.m[id3(i,j,k,  domain.nut.size)];
                     real_t  div = domain.div.m[id3(i,j,k,  domain.div.size)];
                     real_t diva =  mmac.diva.m[id3(i,j,k,   mmac.diva.size)];
                     real_t    p =   domain.p.m[id3(i,j,k,    domain.p.size)];
-                    fprintf(fo, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n", x1, x2, x3, u1, u2, u3, uu1, uu2, uu3, p, nut, div, diva);
+                    fprintf(fo, "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%.5e,%.5e,%lf\n", x1, x2, x3, u1, u2, u3, p, nut, div, diva);
+                }
+            }
+        }
+        fclose(fo);
+    }
+}
+
+void FLUO::time_avg_out(const char *fname) {
+    domain.x.update_self();
+    domain.u_avg.update_self();
+    domain.p_avg.update_self();
+    FILE *fo;
+    fo = fopen(fname, "w+t");
+    if (fo == NULL) {
+        printf("\nERROR when opening file\n");
+        fflush(stdout);
+    } else {
+        fprintf(fo, "x,y,z,u,v,w,p\n");
+        for (int k = 0; k < domain.size[2]; k ++) {
+            for (int j = 0; j < domain.size[1]; j ++) {
+                for (int i = 0; i < domain.size[0]; i ++) {
+                    real_t   x1 =   domain.x.m[id4(i,j,k,0,  domain.x.size)];
+                    real_t   x2 =   domain.x.m[id4(i,j,k,1,  domain.x.size)];
+                    real_t   x3 =   domain.x.m[id4(i,j,k,2,  domain.x.size)];
+                    real_t   u1 =   domain.u_avg.m[id4(i,j,k,0,  domain.u.size)];
+                    real_t   u2 =   domain.u_avg.m[id4(i,j,k,1,  domain.u.size)];
+                    real_t   u3 =   domain.u_avg.m[id4(i,j,k,2,  domain.u.size)];
+                    real_t    p =   domain.p_avg.m[id3(i,j,k,    domain.p.size)];
+                    fprintf(fo, "%lf,%lf,%lf,%lf,%lf,%lf,%lf\n", x1, x2, x3, u1, u2, u3, p);
                 }
             }
         }
@@ -168,20 +251,51 @@ void FLUO::var_out(const char* fname) {
 }
 
 void FLUO::fractional_step() {
-    Ctrl &c = domain.c;
+    Ctrl          &c       = domain.c;
+    MMAC::Poisson &poisson = mmac.poisson;
 
     mmac.ua.init(domain.u);
     mmac.uc.init(domain.u);
     mmac.uua.init(domain.uu);
     mmac.diva.init(domain.div);
+    mmac.psi.init(domain.div);
     if (c.poisson.type == Ctrl::LS::Type::jacobi) {
         poisson.pd.init(domain.p);
+    }
+    if (c.poisson.subtype == Ctrl::LS::Type::jacobi) {
+        poisson.pd.init(domain.p);
+        BB::disable_driver(poisson.pd);
+    }
+    if (c.poisson.type == Ctrl::LS::Type::pbicgstab) {
+        poisson.pcg_r.init(domain.p);
+        poisson.pcg_r0.init(domain.p);
+        poisson.pcg_p.init(domain.p);
+        poisson.pcg_p_.init(domain.p);
+        poisson.pcg_q.init(domain.p);
+        poisson.pcg_s.init(domain.p);
+        poisson.pcg_s_.init(domain.p);
+        poisson.pcg_t.init(domain.p);
+        poisson.pcg_t_.init(domain.p);
+        BB::disable_driver(poisson.pcg_r);
+        BB::disable_driver(poisson.pcg_r0);
+        BB::disable_driver(poisson.pcg_p);
+        BB::disable_driver(poisson.pcg_p_);
+        BB::disable_driver(poisson.pcg_q);
+        BB::disable_driver(poisson.pcg_s);
+        BB::disable_driver(poisson.pcg_s_);
+        BB::disable_driver(poisson.pcg_t);
+        BB::disable_driver(poisson.pcg_t_);
+    }
+    if (c.statistics.type == Ctrl::Statistics::Type::on) {
+        domain.u_avg.init(domain.u);
+        domain.p_avg.init(domain.p);
+        c.statistics.avg_steps = 0;
     }
 
     domain.to_device();
     c.to_device();
-    poisson.to_device();
     mmac.to_device();
+    poisson.to_device();
 
     domain.f.to_device();
     domain.u.to_device();
@@ -199,14 +313,36 @@ void FLUO::fractional_step() {
     mmac.uc.to_device();
     mmac.uua.to_device();
     mmac.diva.to_device();
-    if (c.poisson.type == Ctrl::LS::Type::jacobi) {
+    mmac.psi.to_device();
+    if (c.poisson.type == Ctrl::LS::Type::jacobi || c.poisson.subtype == Ctrl::LS::Type::jacobi) {
         poisson.pd.to_device();
+    }
+    if (c.poisson.type == Ctrl::LS::Type::pbicgstab) {
+        poisson.pcg_r.to_device();
+        poisson.pcg_r0.to_device();
+        poisson.pcg_p.to_device();
+        poisson.pcg_p_.to_device();
+        poisson.pcg_q.to_device();
+        poisson.pcg_s.to_device();
+        poisson.pcg_s_.to_device();
+        poisson.pcg_t.to_device();
+        poisson.pcg_t_.to_device();
+    }
+    if (c.statistics.type == Ctrl::Statistics::Type::on) {
+        domain.u_avg.to_device();
+        domain.p_avg.to_device();
     }
 
     BB::vector_outer(domain.u, domain);
-    BB::scalar_outer(domain.p, domain);
     domain.driver();
+    BB::scalar_outer(domain.p, domain);
     mmac.interpolate_velocity(domain.u, mmac.uc, domain.uu, domain);
+    if (c.turbulence.model == Ctrl::Turbulence::Model::csm) {
+        turb.csm(domain);
+    } else if (c.turbulence.model == Ctrl::Turbulence::Model::smagorinsky) {
+        turb.smagorinsky(domain);
+    }
+    BB::scalar_outer(domain.nut, domain);
 
     real_t diva;
     int n_file = 0;
@@ -222,27 +358,36 @@ void FLUO::fractional_step() {
         BB::velocity_outflow_correction(domain);
         mmac.interpolate_velocity(mmac.ua, mmac.uc, mmac.uua, domain);
         mmac.divergence_velocity(mmac.uua, mmac.diva, diva, domain);
+        mmac.calc_rhs(mmac.diva, domain);
         domain.driver();
 
         c.flow.it = 0;
         do {
             if (c.poisson.type == Ctrl::LS::Type::jacobi) {
-                poisson.jacobi(domain.p, mmac.diva, domain);
+                poisson.jacobi(domain.p, mmac.psi, domain);
             } else if (c.poisson.type == Ctrl::LS::Type::sor) {
-                poisson.sor(domain.p, mmac.diva, domain);
+                poisson.sor(domain.p, mmac.psi, domain);
+            } else if (c.poisson.type == Ctrl::LS::Type::pbicgstab) {
+                poisson.pbicgstab(domain.p, mmac.psi, domain);
             }
             mmac.correct_center_velocity(domain.u, mmac.ua, domain.p, domain);
             BB::vector_outer(domain.u, domain);
             mmac.correct_face_velocity(domain.u, domain.uu, mmac.uua, domain.p, domain);
             mmac.divergence_velocity(domain.uu, domain.div, c.flow.div, domain);
 
-            printf("\r(%6d %6d),p(%4d %7.2e),d(%7.2e %7.2e)", c.time.idt, c.flow.it+1, c.poisson.it, c.poisson.res, diva, c.flow.div);
+            domain.driver_monitor();
+
+            printf("\r(%6d %4d)p(%4d %7.2e)d(%7.2e %7.2e)(%6.3lf %6.3lf %6.3lf)", c.time.idt, c.flow.it+1, c.poisson.it, c.poisson.err, diva, c.flow.div, c.driver[0].u_observed, c.driver[1].u_observed, c.driver[2].u_observed);
             fflush(stdout);
         } while (++c.flow.it < c.flow.maxit && c.flow.div > c.flow.tdiv);
 
-        if (c.flow.it >= c.flow.maxit && c.flow.div > c.flow.tdiv) {
-            goto Terminate;
+        if (c.turbulence.model == Ctrl::Turbulence::Model::csm) {
+            turb.csm(domain);
+        } else if (c.turbulence.model == Ctrl::Turbulence::Model::smagorinsky) {
+            turb.smagorinsky(domain);
         }
+        BB::scalar_outflow(domain.nut, domain);
+        BB::scalar_outer(domain.nut, domain);
 
         domain.pressure_zero_average();
         BB::scalar_outer(domain.p, domain);
@@ -251,10 +396,24 @@ void FLUO::fractional_step() {
             sprintf(fname, "./data/var.csv.%d", n_file++);
             var_out(fname);
         }
+
+        if (c.statistics.type == Ctrl::Statistics::Type::on && c.time.idt * c.time.dt > c.statistics.avg_from) {
+            time_sum();
+        }
+
+        if (c.flow.it >= c.flow.maxit && c.flow.div > c.flow.tdiv) {
+            goto Terminate;
+        }
     }
 Terminate:
     printf("\n");
     var_out("./data/final.csv");
+
+    if (c.statistics.type == Ctrl::Statistics::Type::on) {
+        time_average();
+        printf("time average of %.1lf t and %d steps", c.time.idt * c.time.dt - c.statistics.avg_from, c.statistics.avg_steps);
+        time_avg_out("./data/time_average.csv");
+    }
 
     domain.f.end_device();
     domain.u.end_device();
@@ -272,10 +431,25 @@ Terminate:
     mmac.uc.end_device();
     mmac.uua.end_device();
     mmac.diva.end_device();
-    if (c.poisson.type == Ctrl::LS::Type::jacobi) {
+    mmac.psi.end_device();
+    if (c.poisson.type == Ctrl::LS::Type::jacobi || c.poisson.subtype == Ctrl::LS::Type::jacobi) {
         poisson.pd.end_device();
     }
-
+    if (c.poisson.type == Ctrl::LS::Type::pbicgstab) {
+        poisson.pcg_r.end_device();
+        poisson.pcg_r0.end_device();
+        poisson.pcg_p.end_device();
+        poisson.pcg_p_.end_device();
+        poisson.pcg_q.end_device();
+        poisson.pcg_s.end_device();
+        poisson.pcg_s_.end_device();
+        poisson.pcg_t.end_device();
+        poisson.pcg_t_.end_device();
+    }
+    if (c.statistics.type == Ctrl::Statistics::Type::on) {
+        domain.u_avg.end_device();
+        domain.p_avg.end_device();
+    }
     
     c.end_device();
     poisson.end_device();

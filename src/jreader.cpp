@@ -4,12 +4,12 @@
 #include "../include/boundary.h"
 #include "../include/flag.h"
 
-void fill_active(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
+void JReader::fill_active(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
     scalar_field<unsigned> &f = dom.f;
     for (int i = 0; i < var.size[0]; i ++) {
         for (int j = 0; j < var.size[1]; j ++) {
             for (int k = 0; k < var.size[2]; k ++) {
-                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1)) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Cell::Active, Util::Mask1)) {
                     var.m[id3(i,j,k,var.size)] = init_var;
                 }
             }
@@ -17,12 +17,12 @@ void fill_active(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
     }
 }
 
-void fill_active(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
+void JReader::fill_active(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
     scalar_field<unsigned> &f = dom.f;
     for (int i = 0; i < var.size[0]; i ++) {
         for (int j = 0; j < var.size[1]; j ++) {
             for (int k = 0; k < var.size[2]; k ++) {
-                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1)) {
+                if (Util::ibsee(f.m[id3(i,j,k,f.size)], Cell::Active, Util::Mask1)) {
                     for (int m = 0; m < var.size[3]; m ++) {
                         var.m[id4(i,j,k,m,var.size)] = init_var[m];
                     }
@@ -32,7 +32,7 @@ void fill_active(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
     }
 }
 
-void fill_outflow(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
+void JReader::fill_outflow(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
     if (Util::ibsee(var.obflag[0], BB::outflow, Util::Mask1)) {
         for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
             for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
@@ -83,7 +83,7 @@ void fill_outflow(Dom &dom, scalar_field<real_t> &var, real_t init_var) {
     }
 }
 
-void fill_outflow(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
+void JReader::fill_outflow(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
     if (Util::ibsee(var.obflag[0], BB::outflow, Util::Mask1)) {
         for (int j = GUIDE; j < var.size[1] - GUIDE; j ++) {
             for (int k = GUIDE; k < var.size[2] - GUIDE; k ++) {
@@ -146,7 +146,7 @@ void fill_outflow(Dom &dom, vector_field<real_t> &var, real_t *init_var) {
     }
 }
 
-void fill_outflow_velocity_correction(Dom &dom) {
+void JReader::fill_outflow_velocity_correction(Dom &dom) {
     vector_field<real_t> &u  = dom.u;
     vector_field<real_t> &uu = dom.uu;
     vector_field<real_t> &kx = dom.kx;
@@ -477,6 +477,9 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
             } else if (yyjson_equals_str(type, "driver")) {
                 load_bcfi(dom, u, BB::semicyclic, yyjson_obj_get(bound, "topo"));
             }
+            if (yyjson_obj_get(var, "wallFunction")) {
+                flag = Util::ibset(flag, BB::wall_func, Util::Mask1, 1U);
+            }
             value = yyjson_obj_get(var, "value");
             u.b[id2(index,0,u.bsize)] = yyjson_get_real(yyjson_arr_get(value, 0));
             u.b[id2(index,1,u.bsize)] = yyjson_get_real(yyjson_arr_get(value, 1));
@@ -580,7 +583,7 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
     for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
         for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
             for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
-                f.m[id3(i,j,k,f.size)] = Util::ibset(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1, 1);
+                f.m[id3(i,j,k,f.size)] = Util::ibset(f.m[id3(i,j,k,f.size)], Cell::Active, Util::Mask1, 1);
             }
         }
     }
@@ -601,8 +604,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                                 int i = dom.size[0] - GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
+                                flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Me, Util::Mask1, 0);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -611,8 +614,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                                 int i = GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
+                                flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Me, Util::Mask1, 1);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -621,8 +624,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                                 int j = dom.size[1] - GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
+                                flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 0);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -631,8 +634,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                                 int j = GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
+                                flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 1);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -641,8 +644,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
                                 int k = dom.size[2] - GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
+                                flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 0);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -651,8 +654,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                             for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
                                 int k = GUIDE - 1;
                                 unsigned int flag = f.m[id3(i,j,k,f.size)];
-                                flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                                flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
+                                flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
+                                flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 1);
                                 f.m[id3(i,j,k,f.size)] = flag;
                             }
                         }
@@ -665,8 +668,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                             int i = dom.size[0] - GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Me, Util::Mask1, 0);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -675,8 +678,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                             int i = GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Me, Util::Mask1, 1);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -685,8 +688,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                             int j = dom.size[1] - GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 0);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -695,8 +698,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int k = GUIDE; k < dom.size[2] - GUIDE; k ++) {
                             int j = GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 1);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -705,8 +708,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
                             int k = dom.size[2] - GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 0);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -715,8 +718,8 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
                             int k = GUIDE - 1;
                             unsigned int flag = f.m[id3(i,j,k,f.size)];
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
-                            flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 1);
                             f.m[id3(i,j,k,f.size)] = flag;
                         }
                     }
@@ -736,7 +739,7 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                 for (int i = p1[0] + GUIDE; i <= p2[0] + GUIDE; i ++) {
                     for (int j = p1[1] + GUIDE; j <= p2[1] + GUIDE; j ++) {
                         for (int k = p1[2] + GUIDE; k <= p2[2] + GUIDE; k ++) {
-                            f.m[id3(i,j,k,f.size)] = Util::ibset(f.m[id3(i,j,k,f.size)], Flag::Active, Util::Mask1, 0);
+                            f.m[id3(i,j,k,f.size)] = Util::ibset(f.m[id3(i,j,k,f.size)], Cell::Active, Util::Mask1, 0);
                         }
                     }
                 }
@@ -760,21 +763,21 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         int i = p1[0] - 1 + GUIDE;
                         unsigned int flag = f.m[id3(i,j,k,f.size)];
                         if (f0) {
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, i0);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, i0);
                         } else {
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Me, Util::Mask1, 0);
+                        flag = Util::ibset(flag, Cell::Me, Util::Mask1, 0);
                         f.m[id3(i,j,k,f.size)] = flag;
 
                         i = p2[0] + GUIDE;
                         flag = f.m[id3(i,j,k,f.size)];
                         if (f1) {
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, i1);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, i1);
                         } else {
-                            flag = Util::ibset(flag, Flag::Fe, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Fe, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Me, Util::Mask1, 1);
+                        flag = Util::ibset(flag, Cell::Me, Util::Mask1, 1);
                         f.m[id3(i,j,k,f.size)] = flag;
                     }
                 }
@@ -783,21 +786,21 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         int j = p1[1] - 1 + GUIDE;
                         unsigned int flag = f.m[id3(i,j,k,f.size)];
                         if (f2) {
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, i2);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, i2);
                         } else {
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 0);
+                        flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 0);
                         f.m[id3(i,j,k,f.size)] = flag;
 
                         j = p2[1] + GUIDE;
                         flag = f.m[id3(i,j,k,f.size)];
                         if (f3) {
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, i3);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, i3);
                         } else {
-                            flag = Util::ibset(flag, Flag::Fn, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Fn, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Mn, Util::Mask1, 1);
+                        flag = Util::ibset(flag, Cell::Mn, Util::Mask1, 1);
                         f.m[id3(i,j,k,f.size)] = flag;
                     }
                 }
@@ -806,21 +809,21 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
                         int k = p1[2] - 1 + GUIDE;
                         unsigned int flag = f.m[id3(i,j,k,f.size)];
                         if (f4) {
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, i4);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, i4);
                         } else {
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 0);
+                        flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 0);
                         f.m[id3(i,j,k,f.size)] = flag;
 
                         k = p2[2] + GUIDE;
                         flag = f.m[id3(i,j,k,f.size)];
                         if (f5) {
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, i5);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, i5);
                         } else {
-                            flag = Util::ibset(flag, Flag::Ft, Util::Mask8, index);
+                            flag = Util::ibset(flag, Cell::Ft, Util::Mask8, index);
                         }
-                        flag = Util::ibset(flag, Flag::Mt, Util::Mask1, 1);
+                        flag = Util::ibset(flag, Cell::Mt, Util::Mask1, 1);
                         f.m[id3(i,j,k,f.size)] = flag;
                     }
                 }
@@ -872,10 +875,27 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
         c.poisson.type = Ctrl::LS::Type::bicgstab;
     } else if (yyjson_equals_str(yyjson_obj_get(poisson, "solver"), "pbicgstab")) {
         c.poisson.type = Ctrl::LS::Type::pbicgstab;
+        c.poisson.subtype = Ctrl::LS::Type::sor;
     }
     c.poisson.omega = yyjson_get_real(yyjson_obj_get(poisson, "omega"));
     c.poisson.epsilon = yyjson_get_real(yyjson_obj_get(poisson, "e"));
     c.poisson.maxit = yyjson_get_int(yyjson_obj_get(poisson, "maxit"));
+
+    yyjson_val *turb = yyjson_obj_get(root, "turbulence");
+    if (turb) {
+        if (yyjson_equals_str(yyjson_obj_get(turb, "model"), "smagorinsky")) {
+            c.turbulence.model = Ctrl::Turbulence::Model::smagorinsky;
+            c.turbulence.cs = yyjson_get_real(yyjson_obj_get(turb, "cs"));
+        } else if (yyjson_equals_str(yyjson_obj_get(turb, "model"), "csm")) {
+            c.turbulence.model = Ctrl::Turbulence::Model::csm;
+        }
+    }
+
+    yyjson_val *statistics = yyjson_obj_get(root, "statistics");
+    if (statistics) {
+        c.statistics.type = Ctrl::Statistics::Type::on;
+        c.statistics.avg_from = yyjson_get_real(yyjson_obj_get(statistics, "avgStart"));
+    }
 
     if (!load_mesh) {
         return;
