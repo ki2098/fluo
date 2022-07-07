@@ -19,11 +19,14 @@
 .mmac:
 	nvc++ -c ./src/mmac.cpp -acc -Minfo -o ./obj/mmac.o
 
-.poisson:
-	nvc++ -c ./src/poisson.cpp -acc -Minfo -o ./obj/poisson.o
+.mmac_poisson:
+	nvc++ -c ./src/mmac_poisson.cpp -acc -Minfo -o ./obj/mmac_poisson.o
 
-all: .yyjson .boundary .domain .fluo .jreader .main .mmac .poisson
-	nvc++ ./lib/yyjson.o ./obj/boundary.o ./obj/domain.o ./obj/fluo.o ./obj/jreader.o ./obj/main.o ./obj/mmac.o ./obj/poisson.o -acc -Minfo -o ./bin/fluo++
+.turbulence:
+	nvc++ -c ./src/turbulence.cpp -acc -Minfo -o ./obj/turbulence.o
+
+all: .yyjson .boundary .domain .fluo .jreader .main .mmac .mmac_poisson .turbulence
+	nvc++ ./lib/yyjson.o ./obj/boundary.o ./obj/domain.o ./obj/fluo.o ./obj/jreader.o ./obj/main.o ./obj/mmac.o ./obj/mmac_poisson.o ./obj/turbulence.o -acc -Minfo -o ./bin/fluo++
 
 clean:
 	rm ./obj/*
