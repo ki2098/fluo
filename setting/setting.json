@@ -1,41 +1,43 @@
 {
-    "domain":[400, 200, 1],
+    "domain":[200, 70, 55],
     "boundary":[
         {
-            "label":"inlet",
-            "u":{"type":"fixedValue", "value":[1.0, 0.0, 0.0]},
-            "p":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"outer", "face":"x-"}
+            "label":"in-out",
+            "u":{"type":"cyclic"},
+            "p":{"type":"directional"},
+            "nut":{"type":"cyclic"},
+            "topo":{"io":"outer", "face":["x-", "x+"]}
         },
         {
-            "label":"outlet",
-            "u":{"type":"outflow"},
-            "p":{"type":"fixedGradient", "value":0.0},
-            "outflow":1.0,
-            "topo":{"io":"outer", "face":"x+"}
-        },
-        {
-            "label":"side",
-            "u":{"type":"symmetric"},
-            "p":{"type":"symmetric"},
+            "label":"sides",
+            "u":{"type":"cyclic"},
+            "p":{"type":"cyclic"},
+            "nut":{"type":"cyclic"},
             "topo":{"io":"outer", "face":["y-", "y+"]}
         },
         {
-            "label":"front_back",
-            "u":{"type":"cyclic"},
-            "p":{"type":"cyclic"},
-            "topo":{"io":"outer", "face":["z-","z+"]}
+            "label":"bottom-top",
+            "u":{"type":"fixedValue", "value":[0.0, 0.0, 0.0], "wallFunction":"on"},
+            "p":{"type":"fixedGradient", "value":0.0},
+            "nut":{"type":"fixedValue", "value":0.0},
+            "topo":{"io":"outer", "face":["z-", "z+"]}
         },
         {
-            "label":"square",
-            "u":{"type":"fixedValue", "value":[0.0, 0.0, 0.0]},
+            "label":"cube",
+            "u":{"type":"fixedValue", "value":[0.0, 0.0, 0.0], "wallFunction":"on"},
             "p":{"type":"fixedGradient", "value":0.0},
-            "topo":{"io":"inner", "shape":"cuboid", "position":[[100, 90, 0], [119, 109, 0]]}
+            "nut":{"type":"fixedValue", "value":0.0},
+            "topo":{"io":"inner", "shape":"cuboid", "position":[[60, 30, 0], [79, 39, 19]]}
         }
     ],
+    "driver":{
+        "x":{"type":"directional", "u":1.0}
+    },
     "init":{"u":[1.0, 0.0, 0.0], "p":0.0},
-    "time":{"dt":1e-3, "t":100.0},
-    "flow":{"re":1500, "tdiv":1e-4, "scheme":"muscl", "maxit":1000},
-    "poisson":{"solver":"sor", "omega":1.2, "e":1e-6, "maxit":1000},
-    "monitor":{"t":1.0}
+    "time":{"dt":1e-3, "t":150.0},
+    "flow":{"re":40000, "tdiv":1e-3, "scheme":"muscl", "maxit":1000},
+    "poisson":{"solver":"pbicgstab", "omega":1.2, "e":1e-4, "maxit":1000},
+    "monitor":{"t":1.0},
+    "turbulence":{"model":"smagorinsky", "cs":0.1},
+    "statistics":{"avgStart":100.0}
 }
