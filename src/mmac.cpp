@@ -157,13 +157,14 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
     vector_field<real_t>   &g  = dom.g;
     scalar_field<real_t>   &ja = dom.ja;
     vector_field<real_t>   &sz = dom.sz;
+    vector_field<real_t>   &kx = dom.kx;
 
     real_t kappa = 1.0 / 3.0;
     real_t beta  = (3.0 - kappa) / (1.0 - kappa);
     real_t m1    = 1.0 - kappa;
     real_t m2    = 1.0 + kappa;
 
-    #pragma acc kernels loop independent collapse(3) present(u, uu, ua, nut, f, g, ja, sz, c, dom) copyin(kappa, beta, m1, m2)
+    #pragma acc kernels loop independent collapse(3) present(u, uu, ua, nut, f, g, ja, sz, kx, c, dom) copyin(kappa, beta, m1, m2)
     for (int i = GUIDE; i < dom.size[0] - GUIDE; i ++) {
         for (int j = GUIDE; j < dom.size[1] - GUIDE; j ++) {
             for (int k = GUIDE; k < dom.size[2] - GUIDE; k++) {
@@ -203,11 +204,15 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                     int epe, epn, ept;
                     int epw, eps, epb;
                     real_t u1, u2, u3, mag;
+                    real_t U1, U2, U3;
 
                     u1  = u.m[id4(i,j,k,0,u.size)];
                     u2  = u.m[id4(i,j,k,1,u.size)];
                     u3  = u.m[id4(i,j,k,2,u.size)];
                     mag = sqrt(u1 * u1 + u2 * u2 + u3 * u3);
+                    U1  = u1 * kx.m[id4(i,j,k,0,kx.size)];
+                    U2  = u2 * kx.m[id4(i,j,k,1,kx.size)];
+                    U3  = u3 * kx.m[id4(i,j,k,2,kx.size)];
 
                     ufe = uu.m[id4(i  ,j  ,k  ,0,uu.size)];
                     vfn = uu.m[id4(i  ,j  ,k  ,1,uu.size)];
@@ -408,7 +413,37 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                         BB::pre(m31, ub2, ub1, ref, dis);
                         ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,0,u.bsize)]) - ub1;
                     }
-                    ad1 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        if (b13) {
+                            BB::pre(m13, uc0, ue1, ref, dis);
+                            ue2 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,0,u.bsize)]) - uw1;
+                        }
+                        if (b23) {
+                            BB::pre(m23, uc0, un1, ref, dis);
+                            un2 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,0,u.bsize)]) - us1;
+                        }
+                        if (b33) {
+                            BB::pre(m33, uc0, ut1, ref, dis);
+                            ut2 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,0,u.bsize)]) - ub1;
+                        }
+                        if (b12) {
+                            BB::pre(m12, uw1, uc0, ref, dis);
+                            uw2 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,0,u.bsize)]) - ue1;
+                        }
+                        if (b22) {
+                            BB::pre(m22, us1, uc0, ref, dis);
+                            us2 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,0,u.bsize)]) - un1;
+                        }
+                        if (b32) {
+                            BB::pre(m32, ub1, uc0, ref, dis);
+                            ub2 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,0,u.bsize)]) - ut1;
+                        }
+                    }
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::muscl) {
+                        ad1 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    } else if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        ad1 = Scheme::rmcp_upwind3(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, U1, U2, U3, det, c.flow.alpha);
+                    }
                     vi1 = Scheme::viscosity(w13, w23, w33, w12, w22, w32, mag, uc0, ue1, un1, ut1, uw1, us1, ub1, ute, utn, utt, utw, uts, utb, de1, dn1, dt1, dw1, ds1, db1, nc0, ne1, nn1, nt1, nw1, ns1, nb1, det, g1c, g2c, g3c, g1e, g2n, g3t, g1w, g2s, g3b, c.flow.ri);
 
                     uc0 = u2;
@@ -472,7 +507,37 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                         BB::pre(m31, ub2, ub1, ref, dis);
                         ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,1,u.bsize)]) - ub1;
                     }
-                    ad2 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        if (b13) {
+                            BB::pre(m13, uc0, ue1, ref, dis);
+                            ue2 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,1,u.bsize)]) - uw1;
+                        }
+                        if (b23) {
+                            BB::pre(m23, uc0, un1, ref, dis);
+                            un2 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,1,u.bsize)]) - us1;
+                        }
+                        if (b33) {
+                            BB::pre(m33, uc0, ut1, ref, dis);
+                            ut2 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,1,u.bsize)]) - ub1;
+                        }
+                        if (b12) {
+                            BB::pre(m12, uw1, uc0, ref, dis);
+                            uw2 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,1,u.bsize)]) - ue1;
+                        }
+                        if (b22) {
+                            BB::pre(m22, us1, uc0, ref, dis);
+                            us2 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,1,u.bsize)]) - un1;
+                        }
+                        if (b32) {
+                            BB::pre(m32, ub1, uc0, ref, dis);
+                            ub2 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,1,u.bsize)]) - ut1;
+                        }
+                    }
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::muscl) {
+                        ad2 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    } else if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        ad2 = Scheme::rmcp_upwind3(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, U1, U2, U3, det, c.flow.alpha);
+                    }
                     vi2 = Scheme::viscosity(w13, w23, w33, w12, w22, w32, mag, uc0, ue1, un1, ut1, uw1, us1, ub1, ute, utn, utt, utw, uts, utb, de1, dn1, dt1, dw1, ds1, db1, nc0, ne1, nn1, nt1, nw1, ns1, nb1, det, g1c, g2c, g3c, g1e, g2n, g3t, g1w, g2s, g3b, c.flow.ri);
 
                     uc0 = u3;
@@ -536,7 +601,37 @@ void MMAC::pseudo_velocity(vector_field<real_t> &u, vector_field<real_t> &uu, ve
                         BB::pre(m31, ub2, ub1, ref, dis);
                         ub2 = 2 * BB::eva(b31, ref, dis, u.b[id2(f31,2,u.bsize)]) - ub1;
                     }
-                    ad3 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        if (b13) {
+                            BB::pre(m13, uc0, ue1, ref, dis);
+                            ue2 = 2 * BB::eva(b13, ref, dis, u.b[id2(f13,2,u.bsize)]) - uw1;
+                        }
+                        if (b23) {
+                            BB::pre(m23, uc0, un1, ref, dis);
+                            un2 = 2 * BB::eva(b23, ref, dis, u.b[id2(f23,2,u.bsize)]) - us1;
+                        }
+                        if (b33) {
+                            BB::pre(m33, uc0, ut1, ref, dis);
+                            ut2 = 2 * BB::eva(b33, ref, dis, u.b[id2(f33,2,u.bsize)]) - ub1;
+                        }
+                        if (b12) {
+                            BB::pre(m12, uw1, uc0, ref, dis);
+                            uw2 = 2 * BB::eva(b12, ref, dis, u.b[id2(f12,2,u.bsize)]) - ue1;
+                        }
+                        if (b22) {
+                            BB::pre(m22, us1, uc0, ref, dis);
+                            us2 = 2 * BB::eva(b22, ref, dis, u.b[id2(f22,2,u.bsize)]) - un1;
+                        }
+                        if (b32) {
+                            BB::pre(m32, ub1, uc0, ref, dis);
+                            ub2 = 2 * BB::eva(b32, ref, dis, u.b[id2(f32,2,u.bsize)]) - ut1;
+                        }
+                    }
+                    if (c.flow.scheme == Ctrl::Flow::Scheme::muscl) {
+                        ad3 = Scheme::ffvc_muscl(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, det, epe, epn, ept, epw, eps, epb, kappa, beta, m1, m2);
+                    } else if (c.flow.scheme == Ctrl::Flow::Scheme::upwind3) {
+                        ad3 = Scheme::rmcp_upwind3(uc0, ue1, ue2, un1, un2, ut1, ut2, uw1, uw2, us1, us2, ub1, ub2, ufe, vfn, wft, ufw, vfs, wfb, U1, U2, U3, det, c.flow.alpha);
+                    }
                     vi3 = Scheme::viscosity(w13, w23, w33, w12, w22, w32, mag, uc0, ue1, un1, ut1, uw1, us1, ub1, ute, utn, utt, utw, uts, utb, de1, dn1, dt1, dw1, ds1, db1, nc0, ne1, nn1, nt1, nw1, ns1, nb1, det, g1c, g2c, g3c, g1e, g2n, g3t, g1w, g2s, g3b, c.flow.ri);
 
                     ua.m[id4(i,j,k,0,ua.size)] = u1 + c.time.dt * (-ad1 + vi1);

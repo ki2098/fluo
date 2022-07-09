@@ -845,6 +845,7 @@ void JReader::load_domain(Dom &dom, bool load_mesh) {
     c.flow.ri = 1.0 / c.flow.re;
     if (yyjson_equals_str(yyjson_obj_get(flow, "scheme"), "upwind3")) {
         c.flow.scheme = Ctrl::Flow::Scheme::upwind3;
+        c.flow.alpha  = 1.0 / 24.0;
     } else if (yyjson_equals_str(yyjson_obj_get(flow, "scheme"), "muscl")) {
         c.flow.scheme = Ctrl::Flow::Scheme::muscl;
     }
