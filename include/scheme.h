@@ -35,8 +35,8 @@ static real_t wall_function(real_t up, real_t hp, real_t re, real_t ri) {
 
 static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t un2, real_t ut1, real_t ut2, real_t uw1, real_t uw2, real_t us1, real_t us2, real_t ub1, real_t ub2, real_t ufe, real_t vfn, real_t wft, real_t ufw, real_t vfs, real_t wfb, real_t det, int epe, int epn, int ept, int epw, int eps, int epb, real_t kappa, real_t beta, real_t m1, real_t m2) {
     real_t d1, d2, d3, d4;
-    real_t s1, s2, s3, s4;
-    real_t g1, g2, g3, g4, g5, g6;
+    // real_t s1, s2, s3, s4;
+    // real_t g1, g2, g3, g4, g5, g6;
     real_t u11, u10, u01, u00;
     real_t f1, f0;
     real_t adv;
@@ -45,20 +45,20 @@ static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t 
     d3 = ue1 - uc0;
     d2 = uc0 - uw1;
     d1 = uw1 - uw2;
-    s4 = copysign(1.0, d4);
-    s3 = copysign(1.0, d3);
-    s2 = copysign(1.0, d2);
-    s1 = copysign(1.0, d1);
-    g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
-    g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
-    g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
-    g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
-    g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
-    g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
-    u11 = ue1 - 0.25 * (m1 * g6 + m2 * g5) * epe;
-    u10 = uc0 + 0.25 * (m1 * g3 + m2 * g4);
-    u01 = uc0 - 0.25 * (m1 * g4 + m2 * g3);
-    u00 = uw1 + 0.25 * (m1 * g1 + m2 * g2) * epw;
+    // s4 = copysign(1.0, d4);
+    // s3 = copysign(1.0, d3);
+    // s2 = copysign(1.0, d2);
+    // s1 = copysign(1.0, d1);
+    // g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
+    // g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
+    // g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
+    // g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
+    // g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
+    // g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
+    u11 = ue1 - 0.25 * (m1 * d4 + m2 * d3) * epe;
+    u10 = uc0 + 0.25 * (m1 * d2 + m2 * d3);
+    u01 = uc0 - 0.25 * (m1 * d3 + m2 * d2);
+    u00 = uw1 + 0.25 * (m1 * d1 + m2 * d2) * epw;
     f1  = 0.5 * (ufe * (u11 + u10) - fabs(ufe) * (u11 - u10));
     f0  = 0.5 * (ufw * (u01 + u00) - fabs(ufw) * (u01 - u00));
     adv = (f1 - f0) / det;
@@ -67,20 +67,20 @@ static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t 
     d3  = un1 - uc0;
     d2  = uc0 - us1;
     d1  = us1 - us2;
-    s4  = copysign(1.0, d4);
-    s3  = copysign(1.0, d3);
-    s2  = copysign(1.0, d2);
-    s1  = copysign(1.0, d1);
-    g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
-    g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
-    g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
-    g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
-    g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
-    g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
-    u11 = un1 - 0.25 * (m1 * g6 + m2 * g5) * epn;
-    u10 = uc0 + 0.25 * (m1 * g3 + m2 * g4);
-    u01 = uc0 - 0.25 * (m1 * g4 + m2 * g3);
-    u00 = us1 + 0.25 * (m1 * g1 + m2 * g2) * eps;
+    // s4  = copysign(1.0, d4);
+    // s3  = copysign(1.0, d3);
+    // s2  = copysign(1.0, d2);
+    // s1  = copysign(1.0, d1);
+    // g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
+    // g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
+    // g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
+    // g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
+    // g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
+    // g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
+    u11 = un1 - 0.25 * (m1 * d4 + m2 * d3) * epn;
+    u10 = uc0 + 0.25 * (m1 * d2 + m2 * d3);
+    u01 = uc0 - 0.25 * (m1 * d3 + m2 * d2);
+    u00 = us1 + 0.25 * (m1 * d1 + m2 * d2) * eps;
     f1  = 0.5 * (vfn * (u11 + u10) - fabs(vfn) * (u11 - u10));
     f0  = 0.5 * (vfs * (u01 + u00) - fabs(vfs) * (u01 - u00));
     adv+= (f1 - f0) / det;
@@ -89,20 +89,20 @@ static real_t ffvc_muscl(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t 
     d3  = ut1 - uc0;
     d2  = uc0 - ub1;
     d1  = ub1 - ub2;
-    s4  = copysign(1.0, d4);
-    s3  = copysign(1.0, d3);
-    s2  = copysign(1.0, d2);
-    s1  = copysign(1.0, d1);
-    g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
-    g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
-    g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
-    g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
-    g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
-    g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
-    u11 = ut1 - 0.25 * (m1 * g6 + m2 * g5) * ept;
-    u10 = uc0 + 0.25 * (m1 * g3 + m2 * g4);
-    u01 = uc0 - 0.25 * (m1 * g4 + m2 * g3);
-    u00 = ub1 + 0.25 * (m1 * g1 + m2 * g2) * epb;
+    // s4  = copysign(1.0, d4);
+    // s3  = copysign(1.0, d3);
+    // s2  = copysign(1.0, d2);
+    // s1  = copysign(1.0, d1);
+    // g6  = s4 * Util::max(0.0, Util::min(fabs(d4), s4 * beta * d3));
+    // g5  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d4));
+    // g4  = s3 * Util::max(0.0, Util::min(fabs(d3), s3 * beta * d2));
+    // g3  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d3));
+    // g2  = s2 * Util::max(0.0, Util::min(fabs(d2), s2 * beta * d1));
+    // g1  = s1 * Util::max(0.0, Util::min(fabs(d1), s1 * beta * d2));
+    u11 = ut1 - 0.25 * (m1 * d4 + m2 * d3) * ept;
+    u10 = uc0 + 0.25 * (m1 * d2 + m2 * d3);
+    u01 = uc0 - 0.25 * (m1 * d3 + m2 * d2);
+    u00 = ub1 + 0.25 * (m1 * d1 + m2 * d2) * epb;
     f1  = 0.5 * (wft * (u11 + u10) - fabs(wft) * (u11 - u10));
     f0  = 0.5 * (wfb * (u01 + u00) - fabs(wfb) * (u01 - u00));
     adv+= (f1 - f0) / det;
@@ -168,6 +168,26 @@ static real_t viscosity(unsigned w13, unsigned w23, unsigned w33, unsigned w12, 
     }
 
     return (ffe + ffn + fft - ffw - ffs - ffb) / det;
+}
+
+static real_t rmcp_upwind3(real_t uc0, real_t ue1, real_t ue2, real_t un1, real_t un2, real_t ut1, real_t ut2, real_t uw1, real_t uw2, real_t us1, real_t us2, real_t ub1, real_t ub2, real_t ufe, real_t vfn, real_t wft, real_t ufw, real_t vfs, real_t wfb, real_t U1, real_t U2, real_t U3, real_t det, real_t alpha) {
+    real_t ad1, ad2, ad3;
+    ad1  = ufe * (- ue2 + 27 * ue1 - 27 * uc0 + uw1);
+    ad1 += ufw * (- ue1 + 27 * uc0 - 27 * uw1 + uw2);
+    ad1 /= (48 * det);
+    ad1 += alpha * fabs(U1) * (ue2 - 4 * ue1 + 6 * uc0 - 4 * uw1 + uw2);
+
+    ad2  = vfn * (- un2 + 27 * un1 - 27 * uc0 + us1);
+    ad2 += vfs * (- un1 + 27 * uc0 - 27 * us1 + us2);
+    ad2 /= (48 * det);
+    ad2 += alpha * fabs(U2) * (un2 - 4 * un1 + 6 * uc0 - 4 * us1 + us2);
+
+    ad3  = wft * (- ut2 + 27 * ut1 - 27 * uc0 + ub1);
+    ad3 += wfb * (- ut1 + 27 * uc0 - 27 * ub1 + ub2);
+    ad3 /= (48 * det);
+    ad3 += alpha * fabs(U3) * (ut2 - 4 * ut1 + 6 * uc0 - 4 * ub1 + ub2);
+
+    return ad1 + ad2 + ad3;
 }
 
 };
