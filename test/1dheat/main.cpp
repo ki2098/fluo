@@ -70,10 +70,10 @@ int main() {
     //     }
     // }
 
-    for(int i = 0; i < dom.num; i ++) {
-        printf("%10.3e ", rhs.get(i));
-    }
-    printf("\n");
+    // for(int i = 0; i < dom.num; i ++) {
+    //     printf("%10.3e ", rhs.get(i));
+    // }
+    // printf("\n");
 
     for(int i = 0; i < dom.num; i ++) {
         printf("%10.3e ", t.get(i));

@@ -208,11 +208,11 @@ static void poisson_sor(Mat<real_t> &a, Mat<real_t> &t, Mat<real_t> &rhs, Mat<re
         }
         calc_res(a, t, rhs, res, norm, mesh, dom, stencil_t::d1s3);
         
-        if (it % 10000 == 0) {
+        if (it % 1000 == 0) {
             t.update_self();
             FILE *fo;
             char fname[128];
-            sprintf(fname, "temperature.csv.%d", it / 10000);
+            sprintf(fname, "temperature.csv.%d", it / 1000);
             fo = fopen(fname, "w+t");
             if (fo) {
                 fprintf(fo, "x,y,z,t\n");
@@ -233,7 +233,7 @@ static void poisson_sor(Mat<real_t> &a, Mat<real_t> &t, Mat<real_t> &rhs, Mat<re
         }
 
         printf("\r%6d %10.3e", ++it, norm);
-    } while (norm > 1e-7);
+    } while (norm > 1e-9);
     printf("\n");
 }
 
